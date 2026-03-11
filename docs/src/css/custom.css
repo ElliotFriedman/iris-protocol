@@ -1,0 +1,111 @@
+/**
+ * Iris Protocol Design System
+ * Primary: #7B2FBE (iris purple)
+ * Secondary: #00F0FF (electric cyan)
+ * Background: #1A1A2E (deep charcoal)
+ */
+
+:root {
+  --ifm-color-primary: #7B2FBE;
+  --ifm-color-primary-dark: #6E2AAB;
+  --ifm-color-primary-darker: #6827A1;
+  --ifm-color-primary-darkest: #562085;
+  --ifm-color-primary-light: #8B44CA;
+  --ifm-color-primary-lighter: #9150CF;
+  --ifm-color-primary-lightest: #A76FDA;
+  --ifm-code-font-size: 95%;
+  --docusaurus-highlighted-code-line-bg: rgba(123, 47, 190, 0.1);
+}
+
+[data-theme='dark'] {
+  --ifm-color-primary: #9B5FD6;
+  --ifm-color-primary-dark: #8B47CE;
+  --ifm-color-primary-darker: #8339CA;
+  --ifm-color-primary-darkest: #6E2AAB;
+  --ifm-color-primary-light: #AB77DE;
+  --ifm-color-primary-lighter: #B385E2;
+  --ifm-color-primary-lightest: #CBA9EB;
+  --ifm-background-color: #1A1A2E;
+  --ifm-background-surface-color: #22223A;
+  --ifm-navbar-background-color: #16162B;
+  --ifm-footer-background-color: #12122A;
+  --ifm-card-background-color: #22223A;
+  --ifm-toc-border-color: #2A2A45;
+  --ifm-color-secondary: #00F0FF;
+  --docusaurus-highlighted-code-line-bg: rgba(123, 47, 190, 0.3);
+}
+
+[data-theme='dark'] .navbar {
+  border-bottom: 1px solid #2A2A45;
+}
+
+[data-theme='dark'] .footer {
+  border-top: 1px solid #2A2A45;
+}
+
+[data-theme='dark'] a {
+  color: #00F0FF;
+}
+
+[data-theme='dark'] a:hover {
+  color: #33F5FF;
+}
+
+[data-theme='dark'] .menu__link--active {
+  color: #00F0FF;
+}
+
+[data-theme='dark'] .table-of-contents__link--active {
+  color: #00F0FF;
+}
+
+/* Code block styling */
+[data-theme='dark'] .prism-code {
+  background-color: #16162B !important;
+}
+
+/* Mermaid diagram styling */
+[data-theme='dark'] .docusaurus-mermaid-container {
+  background-color: #22223A;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+/* Table styling */
+[data-theme='dark'] table {
+  border-collapse: collapse;
+}
+
+[data-theme='dark'] table th {
+  background-color: #22223A;
+  border-color: #2A2A45;
+}
+
+[data-theme='dark'] table td {
+  border-color: #2A2A45;
+}
+
+[data-theme='dark'] table tr:nth-child(2n) {
+  background-color: #1E1E35;
+}
+
+/* Blockquote styling */
+[data-theme='dark'] blockquote {
+  border-left-color: #7B2FBE;
+  background-color: #22223A;
+}
+
+/* Admonition styling */
+[data-theme='dark'] .alert--info {
+  --ifm-alert-background-color: rgba(0, 240, 255, 0.1);
+  --ifm-alert-border-color: #00F0FF;
+}
+
+/* Heading accents */
+[data-theme='dark'] h1 {
+  color: #E8E8F0;
+}
+
+[data-theme='dark'] h2 {
+  color: #D0D0E0;
+}
