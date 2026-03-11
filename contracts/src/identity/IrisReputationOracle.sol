@@ -69,6 +69,9 @@ contract IrisReputationOracle is Ownable {
     /// @param agentId The agent to submit feedback for.
     /// @param positive True for positive, false for negative feedback.
     function submitFeedback(uint256 agentId, bool positive) external {
+        if (!agentRegistry.isRegistered(agentId)) {
+            revert AgentNotRegistered(agentId);
+        }
         if (!_allowedReviewers[agentId][msg.sender] && msg.sender != owner()) {
             revert NotAuthorisedReviewer(agentId, msg.sender);
         }

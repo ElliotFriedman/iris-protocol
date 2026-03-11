@@ -76,7 +76,7 @@ contract IntegrationTest is Test {
         reputationOracle = new IrisReputationOracle(address(agentRegistry), address(this));
 
         // Deploy enforcers
-        spendingCap = new SpendingCapEnforcer();
+        spendingCap = new SpendingCapEnforcer(address(delegationManager));
         contractWhitelist = new ContractWhitelistEnforcer();
         timeWindow = new TimeWindowEnforcer();
         reputationGate = new ReputationGateEnforcer();
@@ -258,10 +258,9 @@ contract IntegrationTest is Test {
         reputationOracle.submitFeedback(agentId, true); // 37 -> 39
         reputationOracle.submitFeedback(agentId, true); // 39 -> 41
 
-        // Revoke the delegation hash via the delegation manager.
-        bytes32 delegationHash = this.helperGetHash(delegation2);
+        // Revoke the delegation via the delegation manager.
         vm.prank(user);
-        delegationManager.revokeDelegation(delegationHash);
+        delegationManager.revokeDelegation(delegation2);
 
         vm.prank(agent);
         vm.expectRevert(); // DelegationIsRevoked
@@ -299,7 +298,7 @@ contract IntegrationTest is Test {
         // Revoke via the delegation manager.
         bytes32 hash = this.helperGetHash(delegation);
         vm.prank(user);
-        delegationManager.revokeDelegation(hash);
+        delegationManager.revokeDelegation(delegation);
         assertTrue(delegationManager.revokedDelegations(hash), "Delegation should be revoked");
 
         // Attempt to redeem again -- should revert with DelegationIsRevoked.

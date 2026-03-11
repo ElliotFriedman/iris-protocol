@@ -6,11 +6,12 @@ import {ICaveatEnforcer} from "./interfaces/ICaveatEnforcer.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {MessageHashUtils} from "@openzeppelin/contracts/utils/cryptography/MessageHashUtils.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 /// @title IrisDelegationManager
 /// @notice Core delegation lifecycle manager for the Iris Protocol.
 /// @dev Manages delegation creation, redemption, and revocation using EIP-712 typed data.
-contract IrisDelegationManager is IERC7710Delegate, EIP712 {
+contract IrisDelegationManager is IERC7710Delegate, EIP712, ReentrancyGuard {
     using ECDSA for bytes32;
     using MessageHashUtils for bytes32;
 
@@ -31,9 +32,6 @@ contract IrisDelegationManager is IERC7710Delegate, EIP712 {
 
     /// @notice Mapping from delegation hash to whether it has been revoked.
     mapping(bytes32 => bool) public revokedDelegations;
-
-    /// @notice Mapping from delegation hash to whether it has been redeemed.
-    mapping(bytes32 => bool) public redeemedDelegations;
 
     // -------------------------------------------------------------------------
     // Events
@@ -56,10 +54,9 @@ contract IrisDelegationManager is IERC7710Delegate, EIP712 {
 
     error EmptyDelegationChain();
     error DelegationIsRevoked(bytes32 delegationHash);
-    error DelegationAlreadyRedeemed(bytes32 delegationHash);
     error InvalidSignature();
     error InvalidDelegationChain();
-    error NotDelegator();
+    error NotDelegatorOrOwner();
     error ExecutionFailed();
     error ManagerNotAuthorized();
 
@@ -77,7 +74,11 @@ contract IrisDelegationManager is IERC7710Delegate, EIP712 {
     /// @dev Iterates through all caveats calling beforeHook, executes the action, then calls afterHook on all caveats.
     /// @param delegations The delegation chain to redeem (leaf first, root last).
     /// @param action The action to execute on the delegator's account.
-    function redeemDelegation(Delegation[] calldata delegations, Action calldata action) external override {
+    function redeemDelegation(Delegation[] calldata delegations, Action calldata action)
+        external
+        override
+        nonReentrant
+    {
         if (delegations.length == 0) revert EmptyDelegationChain();
 
         // The root delegation is the last in the array.
@@ -86,14 +87,16 @@ contract IrisDelegationManager is IERC7710Delegate, EIP712 {
         // Verify the delegation manager is authorized on the delegator's account.
         _verifyManagerAuthorized(delegator);
 
-        // Validate the full chain and get the leaf hash.
-        bytes32 leafHash = _validateChain(delegations);
+        // Validate the full chain and get all hashes.
+        bytes32[] memory chainHashes = _validateChain(delegations);
 
         // The leaf delegation's delegate must be msg.sender.
         if (delegations[0].delegate != msg.sender) revert InvalidDelegationChain();
 
-        // Call beforeHook on every caveat of the leaf delegation.
-        _executeCaveatHooks(delegations[0].caveats, leafHash, delegator, action, true);
+        // Call beforeHook on every caveat of EVERY delegation in the chain.
+        for (uint256 i = 0; i < delegations.length; i++) {
+            _executeCaveatHooks(delegations[i].caveats, chainHashes[i], delegator, action, true);
+        }
 
         // Execute the action on the delegator's account.
         (bool success,) = delegator.call(
@@ -101,22 +104,27 @@ contract IrisDelegationManager is IERC7710Delegate, EIP712 {
         );
         if (!success) revert ExecutionFailed();
 
-        // Call afterHook on every caveat of the leaf delegation.
-        _executeCaveatHooks(delegations[0].caveats, leafHash, delegator, action, false);
+        // Call afterHook on every caveat of EVERY delegation in the chain (reverse order).
+        for (uint256 i = delegations.length; i > 0;) {
+            unchecked { --i; }
+            _executeCaveatHooks(delegations[i].caveats, chainHashes[i], delegator, action, false);
+        }
 
-        redeemedDelegations[leafHash] = true;
-        emit DelegationRedeemed(leafHash, delegator, msg.sender);
+        emit DelegationRedeemed(chainHashes[0], delegator, msg.sender);
     }
 
     // -------------------------------------------------------------------------
     // External — Revocation
     // -------------------------------------------------------------------------
 
-    /// @notice Revokes a delegation by its hash. Only callable by the delegator.
-    /// @param delegationHash The hash of the delegation to revoke.
-    function revokeDelegation(bytes32 delegationHash) external {
+    /// @notice Revokes a delegation. Only callable by the delegator or the delegator's owner.
+    /// @dev Accepts the full delegation struct to verify the caller is the delegator or its owner.
+    /// @param delegation The delegation to revoke.
+    function revokeDelegation(Delegation calldata delegation) external {
+        bytes32 delegationHash = getDelegationHash(delegation);
+        _verifyCallerIsDelegatorOrOwner(delegation.delegator);
         revokedDelegations[delegationHash] = true;
-        emit DelegationRevoked(delegationHash, msg.sender);
+        emit DelegationRevoked(delegationHash, delegation.delegator);
     }
 
     // -------------------------------------------------------------------------
@@ -158,8 +166,9 @@ contract IrisDelegationManager is IERC7710Delegate, EIP712 {
     // Internal
     // -------------------------------------------------------------------------
 
-    /// @dev Validates the full delegation chain and returns the leaf hash.
-    function _validateChain(Delegation[] calldata delegations) internal view returns (bytes32 leafHash) {
+    /// @dev Validates the full delegation chain and returns all hashes (indexed same as delegations array).
+    function _validateChain(Delegation[] calldata delegations) internal view returns (bytes32[] memory hashes) {
+        hashes = new bytes32[](delegations.length);
         bytes32 lastHash = bytes32(0);
         for (uint256 i = delegations.length; i > 0;) {
             unchecked {
@@ -177,9 +186,9 @@ contract IrisDelegationManager is IERC7710Delegate, EIP712 {
             if (revokedDelegations[dHash]) revert DelegationIsRevoked(dHash);
 
             _verifySignature(d, dHash);
+            hashes[i] = dHash;
             lastHash = dHash;
         }
-        return lastHash;
     }
 
     /// @dev Executes beforeHook or afterHook on all caveats.
@@ -231,6 +240,20 @@ contract IrisDelegationManager is IERC7710Delegate, EIP712 {
         if (!success || data.length < 32) revert ManagerNotAuthorized();
         address manager = abi.decode(data, (address));
         if (manager != address(this)) revert ManagerNotAuthorized();
+    }
+
+    /// @dev Verifies that msg.sender is the delegator or the delegator's owner (for smart accounts).
+    function _verifyCallerIsDelegatorOrOwner(address delegator) internal view {
+        if (msg.sender == delegator) return;
+        if (delegator.code.length > 0) {
+            (bool success, bytes memory data) =
+                delegator.staticcall(abi.encodeWithSignature("owner()"));
+            if (success && data.length >= 32) {
+                address accountOwner = abi.decode(data, (address));
+                if (msg.sender == accountOwner) return;
+            }
+        }
+        revert NotDelegatorOrOwner();
     }
 
     /// @dev Verifies the EIP-712 signature on a delegation.

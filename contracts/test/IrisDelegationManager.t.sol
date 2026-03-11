@@ -75,7 +75,8 @@ contract IrisDelegationManagerTest is Test {
         delegations[0].signature = _sign(delegatorKey, dHash);
 
         // Revoke the delegation on the manager
-        manager.revokeDelegation(dHash);
+        vm.prank(delegator);
+        manager.revokeDelegation(delegations[0]);
 
         Action memory action = Action({
             target: address(mockTarget),
@@ -154,10 +155,12 @@ contract IrisDelegationManagerTest is Test {
     // -----------------------------------------------------------------------
 
     function test_revokeDelegation() public {
-        bytes32 hash = keccak256("delegation");
+        Delegation memory del = _rootDelegation(delegator, delegate, 99, new Caveat[](0));
+        bytes32 hash = manager.getDelegationHash(del);
         assertFalse(manager.revokedDelegations(hash));
 
-        manager.revokeDelegation(hash);
+        vm.prank(delegator);
+        manager.revokeDelegation(del);
         assertTrue(manager.revokedDelegations(hash));
     }
 

@@ -177,9 +177,8 @@ contract ReputationGateEnforcerTest is Test {
         e.afterHook.selector;
     }
 
-    function test_emitsReputationCheckPassedEvent() public {
-        vm.expectEmit(true, false, false, true);
-        emit ReputationGateEnforcer.ReputationCheckPassed(agentId, 50, 50);
+    function test_exactThresholdPasses() public {
+        // Score is exactly at the minimum threshold — should pass without revert.
         _beforeHook(50);
     }
 }

@@ -12,9 +12,22 @@ contract SpendingCapEnforcer is ICaveatEnforcer {
     /// @param remaining The remaining allowance in the current period.
     error SpendingCapExceeded(uint256 requested, uint256 remaining);
 
+    /// @notice Reverted when afterHook is called by an unauthorized address.
+    error UnauthorizedCaller();
+
+    /// @notice Reverted when the period is zero (would cause division by zero).
+    error InvalidPeriod();
+
+    /// @notice The authorized delegation manager that may update spend tracking.
+    address public immutable delegationManager;
+
     /// @notice Cumulative spend per delegation per period index.
     /// @dev mapping(delegationHash => mapping(periodIndex => amountSpent))
     mapping(bytes32 => mapping(uint256 => uint256)) public periodSpend;
+
+    constructor(address _delegationManager) {
+        delegationManager = _delegationManager;
+    }
 
     /// @notice Called before execution to verify the spend would not exceed the cap.
     /// @param terms ABI-encoded (uint256 allowance, uint256 period).
@@ -32,6 +45,7 @@ contract SpendingCapEnforcer is ICaveatEnforcer {
         bytes calldata
     ) external view override {
         (uint256 allowance, uint256 period) = abi.decode(terms, (uint256, uint256));
+        if (period == 0) revert InvalidPeriod();
         uint256 periodIndex = block.timestamp / period;
         uint256 currentSpend = periodSpend[delegationHash][periodIndex];
         if (currentSpend + value > allowance) {
@@ -54,7 +68,9 @@ contract SpendingCapEnforcer is ICaveatEnforcer {
         uint256 value,
         bytes calldata
     ) external override {
+        if (msg.sender != delegationManager) revert UnauthorizedCaller();
         (, uint256 period) = abi.decode(terms, (uint256, uint256));
+        if (period == 0) revert InvalidPeriod();
         uint256 periodIndex = block.timestamp / period;
         periodSpend[delegationHash][periodIndex] += value;
     }

@@ -27,9 +27,6 @@ contract IrisAgentRegistry {
     /// @notice Agent ID to agent info.
     mapping(uint256 => AgentInfo) private _agents;
 
-    /// @notice Lightweight NFT ownership: agentId => owner address.
-    mapping(uint256 => address) private _ownerOf;
-
     // -------------------------------------------------------------------------
     // Events
     // -------------------------------------------------------------------------
@@ -70,9 +67,6 @@ contract IrisAgentRegistry {
             registeredAt: block.timestamp
         });
 
-        // Mint a lightweight NFT to the operator.
-        _ownerOf[agentId] = msg.sender;
-
         emit AgentRegistered(agentId, msg.sender, metadataURI);
     }
 
@@ -112,12 +106,12 @@ contract IrisAgentRegistry {
         return info.operator != address(0) && info.active;
     }
 
-    /// @notice Returns the owner (operator) of the lightweight identity NFT.
-    /// @param agentId The token / agent ID.
-    /// @return The address that owns the identity NFT.
+    /// @notice Returns the operator of the agent identity.
+    /// @param agentId The agent ID.
+    /// @return The address that operates this agent.
     function ownerOf(uint256 agentId) external view returns (address) {
-        address owner = _ownerOf[agentId];
-        if (owner == address(0)) revert AgentNotFound(agentId);
-        return owner;
+        address operator = _agents[agentId].operator;
+        if (operator == address(0)) revert AgentNotFound(agentId);
+        return operator;
     }
 }

@@ -51,13 +51,13 @@ library IrisDeployer {
         d.agentRegistry = new IrisAgentRegistry();
         d.reputationOracle = new IrisReputationOracle(address(d.agentRegistry), oracleOwner);
 
-        // Caveat enforcers
-        d.spendingCap = new SpendingCapEnforcer();
+        // Caveat enforcers (stateful enforcers receive delegationManager for caller auth)
+        d.spendingCap = new SpendingCapEnforcer(address(d.delegationManager));
         d.contractWhitelist = new ContractWhitelistEnforcer();
         d.functionSelector = new FunctionSelectorEnforcer();
         d.timeWindow = new TimeWindowEnforcer();
         d.singleTxCap = new SingleTxCapEnforcer();
-        d.cooldown = new CooldownEnforcer();
+        d.cooldown = new CooldownEnforcer(address(d.delegationManager));
         d.reputationGate = new ReputationGateEnforcer();
 
         // Approval queue

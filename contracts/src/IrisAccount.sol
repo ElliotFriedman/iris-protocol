@@ -16,6 +16,9 @@ contract IrisAccount is IERC7710Delegator {
     // Storage
     // -------------------------------------------------------------------------
 
+    /// @notice The canonical ERC-4337 v0.7 EntryPoint address.
+    address public constant ENTRY_POINT = 0x0000000071727De22E5E9d8BAf0edAc6f37da032;
+
     /// @notice The owner of this smart account.
     address public owner;
 
@@ -44,6 +47,7 @@ contract IrisAccount is IERC7710Delegator {
 
     error OnlyOwner();
     error OnlyOwnerOrDelegationManager();
+    error OnlyEntryPoint();
     error ExecutionFailed();
     error InvalidSignatureLength();
 
@@ -131,6 +135,8 @@ contract IrisAccount is IERC7710Delegator {
         external
         returns (uint256 validationData)
     {
+        if (msg.sender != ENTRY_POINT) revert OnlyEntryPoint();
+
         // Verify the signature is from the owner.
         bytes32 ethSignedHash = userOpHash.toEthSignedMessageHash();
         address signer = ECDSA.recover(ethSignedHash, userOp.signature);

@@ -12,8 +12,18 @@ contract CooldownEnforcer is ICaveatEnforcer {
     /// @param current The current block timestamp.
     error CooldownNotElapsed(uint256 nextAllowed, uint256 current);
 
+    /// @notice Reverted when afterHook is called by an unauthorized address.
+    error UnauthorizedCaller();
+
+    /// @notice The authorized delegation manager that may update cooldown tracking.
+    address public immutable delegationManager;
+
     /// @notice Last execution timestamp per delegation hash.
     mapping(bytes32 => uint256) public lastExecution;
+
+    constructor(address _delegationManager) {
+        delegationManager = _delegationManager;
+    }
 
     /// @notice Called before execution to verify the cooldown period has elapsed.
     /// @param terms ABI-encoded (uint256 cooldownPeriod, uint256 valueThreshold).
@@ -54,6 +64,7 @@ contract CooldownEnforcer is ICaveatEnforcer {
         uint256 value,
         bytes calldata
     ) external override {
+        if (msg.sender != delegationManager) revert UnauthorizedCaller();
         (, uint256 valueThreshold) = abi.decode(terms, (uint256, uint256));
         if (value >= valueThreshold) {
             lastExecution[delegationHash] = block.timestamp;

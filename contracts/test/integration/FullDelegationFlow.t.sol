@@ -110,9 +110,8 @@ contract FullDelegationFlowTest is IrisTestBase {
         }));
 
         // Step 10: Owner revokes → agent blocked
-        bytes32 hash = this._helperGetHash(tier2Del);
         vm.prank(owner);
-        d.delegationManager.revokeDelegation(hash);
+        d.delegationManager.revokeDelegation(tier2Del);
 
         Delegation[] memory chain2 = new Delegation[](1);
         chain2[0] = tier2Del;

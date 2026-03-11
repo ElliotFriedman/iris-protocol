@@ -10,6 +10,9 @@ contract FunctionSelectorEnforcer is ICaveatEnforcer {
     /// @param selector The disallowed function selector.
     error SelectorNotAllowed(bytes4 selector);
 
+    /// @notice Reverted when the calldata is too short to contain a function selector.
+    error CalldataTooShort();
+
     /// @notice Called before execution to verify the function selector is allowed.
     /// @param terms ABI-encoded bytes4[] of allowed function selectors.
     /// @param callData The calldata of the execution whose first 4 bytes are the selector.
@@ -24,6 +27,7 @@ contract FunctionSelectorEnforcer is ICaveatEnforcer {
         uint256,
         bytes calldata callData
     ) external pure override {
+        if (callData.length < 4) revert CalldataTooShort();
         bytes4 selector = bytes4(callData[:4]);
         bytes4[] memory allowed = abi.decode(terms, (bytes4[]));
         uint256 length = allowed.length;

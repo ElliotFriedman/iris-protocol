@@ -19,7 +19,7 @@ contract CooldownEnforcerTest is Test {
     uint256 constant THRESHOLD = 0.5 ether;
 
     function setUp() public {
-        enforcer = new CooldownEnforcer();
+        enforcer = new CooldownEnforcer(DELEGATION_MANAGER);
         vm.warp(1000);
     }
 
@@ -39,6 +39,7 @@ contract CooldownEnforcerTest is Test {
         bytes memory terms = abi.encode(COOLDOWN, THRESHOLD);
 
         enforcer.beforeHook(terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, 1 ether, "");
+        vm.prank(DELEGATION_MANAGER);
         enforcer.afterHook(terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, 1 ether, "");
 
         vm.warp(1100);
@@ -53,6 +54,7 @@ contract CooldownEnforcerTest is Test {
         bytes memory terms = abi.encode(COOLDOWN, THRESHOLD);
 
         enforcer.beforeHook(terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, 1 ether, "");
+        vm.prank(DELEGATION_MANAGER);
         enforcer.afterHook(terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, 1 ether, "");
 
         vm.warp(1301);
@@ -64,6 +66,7 @@ contract CooldownEnforcerTest is Test {
         bytes memory terms = abi.encode(COOLDOWN, THRESHOLD);
 
         enforcer.beforeHook(terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, 1 ether, "");
+        vm.prank(DELEGATION_MANAGER);
         enforcer.afterHook(terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, 1 ether, "");
 
         vm.warp(1001);
@@ -75,6 +78,7 @@ contract CooldownEnforcerTest is Test {
     function test_afterHookDoesNotRecordBelowThreshold() public {
         bytes memory terms = abi.encode(COOLDOWN, THRESHOLD);
 
+        vm.prank(DELEGATION_MANAGER);
         enforcer.afterHook(
             terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, 0.1 ether, ""
         );
@@ -85,6 +89,7 @@ contract CooldownEnforcerTest is Test {
     function test_afterHookRecordsAboveThreshold() public {
         bytes memory terms = abi.encode(COOLDOWN, THRESHOLD);
 
+        vm.prank(DELEGATION_MANAGER);
         enforcer.afterHook(terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, 1 ether, "");
 
         assertEq(enforcer.lastExecution(DELEGATION_HASH), 1000);
@@ -96,6 +101,7 @@ contract CooldownEnforcerTest is Test {
         enforcer.beforeHook(
             terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, THRESHOLD, ""
         );
+        vm.prank(DELEGATION_MANAGER);
         enforcer.afterHook(
             terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, THRESHOLD, ""
         );

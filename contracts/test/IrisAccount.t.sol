@@ -183,7 +183,9 @@ contract IrisAccountTest is Test {
         userOp.sender = account;
         userOp.signature = signature;
 
-        vm.prank(address(uint160(0xE0A)));
+        // Must be called by the canonical ERC-4337 v0.7 EntryPoint.
+        address entryPoint = IrisAccount(payable(account)).ENTRY_POINT();
+        vm.prank(entryPoint);
         uint256 result = IrisAccount(payable(account)).validateUserOp(userOp, userOpHash, 0);
         assertEq(result, 0);
     }
@@ -202,9 +204,23 @@ contract IrisAccountTest is Test {
         userOp.sender = account;
         userOp.signature = signature;
 
-        vm.prank(address(0xE0A));
+        address entryPoint = IrisAccount(payable(account)).ENTRY_POINT();
+        vm.prank(entryPoint);
         uint256 result = IrisAccount(payable(account)).validateUserOp(userOp, userOpHash, 0);
         assertEq(result, 1);
+    }
+
+    function test_validateUserOp_rejectsNonEntryPoint() public {
+        address account = factory.createAccount(owner, address(delegationManager), 0);
+
+        PackedUserOperation memory userOp;
+        userOp.sender = account;
+        userOp.signature = new bytes(65);
+
+        address attacker = makeAddr("attacker");
+        vm.prank(attacker);
+        vm.expectRevert(IrisAccount.OnlyEntryPoint.selector);
+        IrisAccount(payable(account)).validateUserOp(userOp, keccak256("test"), 0);
     }
 
     // -------------------------------------------------------------------------

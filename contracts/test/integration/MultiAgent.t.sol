@@ -75,9 +75,8 @@ contract MultiAgentTest is IrisTestBase {
         _redeemAs(agentC, delC, action);
 
         // Revoke agent A
-        bytes32 hashA = this._helperGetHash(delA);
         vm.prank(owner);
-        d.delegationManager.revokeDelegation(hashA);
+        d.delegationManager.revokeDelegation(delA);
 
         // Agent A blocked (original chain revoked)
         Delegation[] memory chainA = new Delegation[](1);

@@ -118,9 +118,8 @@ contract MultiAgentIntegrationTest is IrisTestBase {
         _redeemAs(agentC, dC, Action({target: address(receiver), value: 1 ether, callData: ""}));
         assertEq(receiver.totalCalls(), 3);
 
-        bytes32 dCHash = this._helperGetHash(dC);
         vm.prank(owner);
-        d.delegationManager.revokeDelegation(dCHash);
+        d.delegationManager.revokeDelegation(dC);
 
         // C with new salt still works
         _redeemAs(agentC, _buildDel(agentC, agentCId, emptyCaveats, 23), Action({target: address(receiver), value: 1 ether, callData: ""}));

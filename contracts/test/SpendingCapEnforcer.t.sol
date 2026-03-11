@@ -19,7 +19,7 @@ contract SpendingCapEnforcerTest is Test {
     uint256 constant PERIOD = 86_400;
 
     function setUp() public {
-        enforcer = new SpendingCapEnforcer();
+        enforcer = new SpendingCapEnforcer(DELEGATION_MANAGER);
         vm.warp(86_400);
     }
 
@@ -56,6 +56,7 @@ contract SpendingCapEnforcerTest is Test {
         enforcer.beforeHook(
             terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, 0.6 ether, ""
         );
+        vm.prank(DELEGATION_MANAGER);
         enforcer.afterHook(
             terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, 0.6 ether, ""
         );
@@ -76,6 +77,7 @@ contract SpendingCapEnforcerTest is Test {
         enforcer.beforeHook(
             terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, DAILY_CAP, ""
         );
+        vm.prank(DELEGATION_MANAGER);
         enforcer.afterHook(
             terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, DAILY_CAP, ""
         );
