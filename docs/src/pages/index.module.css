@@ -11,7 +11,7 @@
 }
 
 [data-theme='dark'] .heroBanner {
-  background: linear-gradient(135deg, #1A1A2E 0%, #2D1B4E 50%, #1A1A2E 100%);
+  background: #0D0D14;
 }
 
 @media screen and (max-width: 996px) {
