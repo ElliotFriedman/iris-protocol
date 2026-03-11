@@ -1,113 +1,46 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.28;
 
-import {Test} from "forge-std/Test.sol";
+import {IrisTestBase} from "../helpers/IrisTestBase.sol";
 import {IrisAccount} from "../../src/IrisAccount.sol";
-import {IrisAccountFactory} from "../../src/IrisAccountFactory.sol";
-import {IrisDelegationManager} from "../../src/IrisDelegationManager.sol";
-import {IrisAgentRegistry} from "../../src/identity/IrisAgentRegistry.sol";
-import {IrisReputationOracle} from "../../src/identity/IrisReputationOracle.sol";
-import {SpendingCapEnforcer} from "../../src/caveats/SpendingCapEnforcer.sol";
-import {ContractWhitelistEnforcer} from "../../src/caveats/ContractWhitelistEnforcer.sol";
-import {FunctionSelectorEnforcer} from "../../src/caveats/FunctionSelectorEnforcer.sol";
-import {TimeWindowEnforcer} from "../../src/caveats/TimeWindowEnforcer.sol";
-import {ReputationGateEnforcer} from "../../src/caveats/ReputationGateEnforcer.sol";
-import {SingleTxCapEnforcer} from "../../src/caveats/SingleTxCapEnforcer.sol";
-import {CooldownEnforcer} from "../../src/caveats/CooldownEnforcer.sol";
 import {Delegation, Action, Caveat} from "../../src/interfaces/IERC7710.sol";
 
-/// @notice Target contract with multiple callable functions.
 contract DeFiVault {
     uint256 public deposited;
     uint256 public withdrawn;
     uint256 public swapCount;
 
-    function deposit() external payable {
-        deposited += msg.value;
-    }
-
-    function withdraw(uint256 amount) external {
-        withdrawn += amount;
-    }
-
-    function swap(uint256 amountIn, uint256 minOut) external payable {
-        swapCount++;
-    }
-
-    function emergencyShutdown() external {
-        // Dangerous — should be restricted
-    }
-
+    function deposit() external payable { deposited += msg.value; }
+    function withdraw(uint256 amount) external { withdrawn += amount; }
+    function swap(uint256 amountIn, uint256 minOut) external payable { swapCount++; }
+    function emergencyShutdown() external {}
     receive() external payable {}
 }
 
 /// @title MultiCaveatStackingTest
 /// @notice Tests composability of all 7 caveat enforcers in a single delegation.
-///         Validates AND-logic: all caveats must pass for execution to succeed.
-contract MultiCaveatStackingTest is Test {
-    // Infrastructure
-    IrisAccountFactory factory;
-    IrisDelegationManager dm;
-    IrisAgentRegistry registry;
-    IrisReputationOracle oracle;
-
-    // All 7 enforcers
-    SpendingCapEnforcer spendingCap;
-    ContractWhitelistEnforcer whitelist;
-    FunctionSelectorEnforcer funcSelector;
-    TimeWindowEnforcer timeWindow;
-    ReputationGateEnforcer reputationGate;
-    SingleTxCapEnforcer singleTxCap;
-    CooldownEnforcer cooldown;
-
-    // Actors
+/// @dev Uses IrisDeployer fixture via IrisTestBase for deployment parity with mainnet scripts.
+contract MultiCaveatStackingTest is IrisTestBase {
     address owner;
     uint256 ownerKey;
     address agentOperator;
     uint256 agentId;
 
-    // Contracts
     IrisAccount account;
     DeFiVault vault;
 
     function setUp() public {
         vm.warp(1_000_000);
-
-        dm = new IrisDelegationManager();
-        factory = new IrisAccountFactory();
-        registry = new IrisAgentRegistry();
-        oracle = new IrisReputationOracle(address(registry), address(this));
-
-        spendingCap = new SpendingCapEnforcer();
-        whitelist = new ContractWhitelistEnforcer();
-        funcSelector = new FunctionSelectorEnforcer();
-        timeWindow = new TimeWindowEnforcer();
-        reputationGate = new ReputationGateEnforcer();
-        singleTxCap = new SingleTxCapEnforcer();
-        cooldown = new CooldownEnforcer();
+        _deployIris();
 
         (owner, ownerKey) = makeAddrAndKey("owner");
         agentOperator = makeAddr("agent");
-
-        vm.prank(agentOperator);
-        agentId = registry.registerAgent("ipfs://agent");
-
-        address acctAddr = factory.createAccount(owner, address(dm), 0);
-        account = IrisAccount(payable(acctAddr));
-        vm.deal(address(account), 1000 ether);
-
+        agentId = _registerAgent(agentOperator, "ipfs://agent");
+        account = _createFundedAccount(owner, 1000 ether);
         vault = new DeFiVault();
     }
 
-    // =========================================================================
-    // Helpers
-    // =========================================================================
-
-    function _helperGetHash(Delegation calldata d) external view returns (bytes32) {
-        return dm.getDelegationHash(d);
-    }
-
-    function _buildAllCaveatsDelegation(uint256 salt) internal view returns (Delegation memory d) {
+    function _buildAllCaveatsDelegation(uint256 salt) internal view returns (Delegation memory del) {
         address[] memory allowedContracts = new address[](1);
         allowedContracts[0] = address(vault);
 
@@ -116,334 +49,144 @@ contract MultiCaveatStackingTest is Test {
         allowedSelectors[1] = DeFiVault.swap.selector;
 
         Caveat[] memory caveats = new Caveat[](7);
+        caveats[0] = Caveat({enforcer: address(d.spendingCap), terms: abi.encode(uint256(20 ether), uint256(1 days))});
+        caveats[1] = Caveat({enforcer: address(d.contractWhitelist), terms: abi.encode(allowedContracts)});
+        caveats[2] = Caveat({enforcer: address(d.functionSelector), terms: abi.encode(allowedSelectors)});
+        caveats[3] = Caveat({enforcer: address(d.timeWindow), terms: abi.encode(block.timestamp, block.timestamp + 7 days)});
+        caveats[4] = Caveat({enforcer: address(d.reputationGate), terms: abi.encode(address(d.reputationOracle), agentId, uint256(40))});
+        caveats[5] = Caveat({enforcer: address(d.singleTxCap), terms: abi.encode(uint256(10 ether))});
+        caveats[6] = Caveat({enforcer: address(d.cooldown), terms: abi.encode(uint256(30 minutes), uint256(5 ether))});
 
-        // 0: Spending cap — 20 ETH per day
-        caveats[0] = Caveat({
-            enforcer: address(spendingCap),
-            terms: abi.encode(uint256(20 ether), uint256(1 days))
-        });
-
-        // 1: Contract whitelist — vault only
-        caveats[1] = Caveat({
-            enforcer: address(whitelist),
-            terms: abi.encode(allowedContracts)
-        });
-
-        // 2: Function selector — deposit + swap only
-        caveats[2] = Caveat({
-            enforcer: address(funcSelector),
-            terms: abi.encode(allowedSelectors)
-        });
-
-        // 3: Time window — valid for 7 days from now
-        caveats[3] = Caveat({
-            enforcer: address(timeWindow),
-            terms: abi.encode(block.timestamp, block.timestamp + 7 days)
-        });
-
-        // 4: Reputation gate — min score 40
-        caveats[4] = Caveat({
-            enforcer: address(reputationGate),
-            terms: abi.encode(address(oracle), agentId, uint256(40))
-        });
-
-        // 5: Single tx cap — 10 ETH max per transaction
-        caveats[5] = Caveat({
-            enforcer: address(singleTxCap),
-            terms: abi.encode(uint256(10 ether))
-        });
-
-        // 6: Cooldown — 30 minutes between transactions >= 5 ETH
-        caveats[6] = Caveat({
-            enforcer: address(cooldown),
-            terms: abi.encode(uint256(30 minutes), uint256(5 ether))
-        });
-
-        d.delegator = address(account);
-        d.delegate = agentOperator;
-        d.authority = address(0);
-        d.caveats = caveats;
-        d.salt = salt;
-
-        bytes32 dHash = this._helperGetHash(d);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, dHash);
-        d.signature = abi.encodePacked(r, s, v);
+        del.delegator = address(account);
+        del.delegate = agentOperator;
+        del.authority = address(0);
+        del.caveats = caveats;
+        del.salt = salt;
+        del = _signDelegation(del, ownerKey);
     }
-
-    function _redeem(Delegation memory d, Action memory action) internal {
-        Delegation[] memory chain = new Delegation[](1);
-        chain[0] = d;
-        vm.prank(agentOperator);
-        dm.redeemDelegation(chain, action);
-    }
-
-    function _tryRedeem(Delegation memory d, Action memory action) internal returns (bool) {
-        Delegation[] memory chain = new Delegation[](1);
-        chain[0] = d;
-        vm.prank(agentOperator);
-        (bool ok,) = address(dm).call(
-            abi.encodeCall(dm.redeemDelegation, (chain, action))
-        );
-        return ok;
-    }
-
-    // =========================================================================
-    // All 7 caveats pass
-    // =========================================================================
 
     function test_allSevenCaveatsPass() public {
-        Delegation memory d = _buildAllCaveatsDelegation(1);
-
-        _redeem(d, Action({
-            target: address(vault),
-            value: 3 ether,
-            callData: abi.encodeCall(DeFiVault.deposit, ())
-        }));
+        Delegation memory del = _buildAllCaveatsDelegation(1);
+        _redeemAs(agentOperator, del, Action({target: address(vault), value: 3 ether, callData: abi.encodeCall(DeFiVault.deposit, ())}));
         assertEq(vault.deposited(), 3 ether);
     }
 
-    // =========================================================================
-    // Each caveat individually blocks
-    // =========================================================================
-
     function test_blockedBySpendingCap_allOtherCaveatsPass() public {
-        // Reuse same delegation so spending cap tracks cumulatively on same hash
-        Delegation memory d = _buildAllCaveatsDelegation(10);
-
-        // First call: 9 ETH
-        _redeem(d, Action({
-            target: address(vault),
-            value: 9 ether,
-            callData: abi.encodeCall(DeFiVault.deposit, ())
-        }));
-
-        // Wait for cooldown (first tx was >= 5 ETH threshold)
+        Delegation memory del = _buildAllCaveatsDelegation(10);
+        _redeemAs(agentOperator, del, Action({target: address(vault), value: 9 ether, callData: abi.encodeCall(DeFiVault.deposit, ())}));
         vm.warp(block.timestamp + 31 minutes);
-
-        // Second call: 9 ETH — cumulative 18 ETH within 20 cap (reuse same delegation)
-        _redeem(d, Action({
-            target: address(vault),
-            value: 9 ether,
-            callData: abi.encodeCall(DeFiVault.deposit, ())
-        }));
-
-        // Wait for cooldown
+        _redeemAs(agentOperator, del, Action({target: address(vault), value: 9 ether, callData: abi.encodeCall(DeFiVault.deposit, ())}));
         vm.warp(block.timestamp + 31 minutes);
-
-        // Third call: 5 ETH — cumulative 23 ETH, exceeds 20 ETH cap
-        bool ok = _tryRedeem(d, Action({
-            target: address(vault),
-            value: 5 ether,
-            callData: abi.encodeCall(DeFiVault.deposit, ())
-        }));
-        assertFalse(ok, "Cumulative spend exceeds daily cap");
+        bool ok = _tryRedeemAs(agentOperator, del, Action({target: address(vault), value: 5 ether, callData: abi.encodeCall(DeFiVault.deposit, ())}));
+        assertFalse(ok);
     }
 
     function test_blockedByContractWhitelist_allOtherCaveatsPass() public {
-        Delegation memory d = _buildAllCaveatsDelegation(20);
-
-        bool ok = _tryRedeem(d, Action({
-            target: makeAddr("rogue"),
-            value: 1 ether,
-            callData: abi.encodeCall(DeFiVault.deposit, ())
-        }));
-        assertFalse(ok, "Non-whitelisted contract should be blocked");
+        bool ok = _tryRedeemAs(agentOperator, _buildAllCaveatsDelegation(20), Action({target: makeAddr("rogue"), value: 1 ether, callData: abi.encodeCall(DeFiVault.deposit, ())}));
+        assertFalse(ok);
     }
 
     function test_blockedByFunctionSelector_allOtherCaveatsPass() public {
-        Delegation memory d = _buildAllCaveatsDelegation(30);
-
-        // emergencyShutdown is not in the allowed selectors
-        bool ok = _tryRedeem(d, Action({
-            target: address(vault),
-            value: 0,
-            callData: abi.encodeCall(DeFiVault.emergencyShutdown, ())
-        }));
-        assertFalse(ok, "Disallowed function selector should be blocked");
+        bool ok = _tryRedeemAs(agentOperator, _buildAllCaveatsDelegation(30), Action({target: address(vault), value: 0, callData: abi.encodeCall(DeFiVault.emergencyShutdown, ())}));
+        assertFalse(ok);
     }
 
     function test_blockedByTimeWindow_allOtherCaveatsPass() public {
-        // Build delegation while time window is still valid
-        Delegation memory d = _buildAllCaveatsDelegation(40);
-
-        // Fast-forward past the time window (7 days from setUp's block.timestamp)
+        Delegation memory del = _buildAllCaveatsDelegation(40);
         vm.warp(block.timestamp + 8 days);
-
-        bool ok = _tryRedeem(d, Action({
-            target: address(vault),
-            value: 1 ether,
-            callData: abi.encodeCall(DeFiVault.deposit, ())
-        }));
-        assertFalse(ok, "Expired time window should block execution");
+        bool ok = _tryRedeemAs(agentOperator, del, Action({target: address(vault), value: 1 ether, callData: abi.encodeCall(DeFiVault.deposit, ())}));
+        assertFalse(ok);
     }
 
     function test_blockedByReputationGate_allOtherCaveatsPass() public {
-        // Drop reputation below 40
-        oracle.submitFeedback(agentId, false); // 50 -> 45
-        oracle.submitFeedback(agentId, false); // 45 -> 40
-        oracle.submitFeedback(agentId, false); // 40 -> 35
-
-        Delegation memory d = _buildAllCaveatsDelegation(50);
-
-        bool ok = _tryRedeem(d, Action({
-            target: address(vault),
-            value: 1 ether,
-            callData: abi.encodeCall(DeFiVault.deposit, ())
-        }));
-        assertFalse(ok, "Low reputation should block execution");
+        d.reputationOracle.submitFeedback(agentId, false);
+        d.reputationOracle.submitFeedback(agentId, false);
+        d.reputationOracle.submitFeedback(agentId, false);
+        bool ok = _tryRedeemAs(agentOperator, _buildAllCaveatsDelegation(50), Action({target: address(vault), value: 1 ether, callData: abi.encodeCall(DeFiVault.deposit, ())}));
+        assertFalse(ok);
     }
 
     function test_blockedBySingleTxCap_allOtherCaveatsPass() public {
-        Delegation memory d = _buildAllCaveatsDelegation(60);
-
-        // 11 ETH exceeds 10 ETH single tx cap
-        bool ok = _tryRedeem(d, Action({
-            target: address(vault),
-            value: 11 ether,
-            callData: abi.encodeCall(DeFiVault.deposit, ())
-        }));
-        assertFalse(ok, "Single tx cap exceeded should block");
+        bool ok = _tryRedeemAs(agentOperator, _buildAllCaveatsDelegation(60), Action({target: address(vault), value: 11 ether, callData: abi.encodeCall(DeFiVault.deposit, ())}));
+        assertFalse(ok);
     }
 
     function test_blockedByCooldown_allOtherCaveatsPass() public {
-        // Reuse same delegation so cooldown tracks on same hash
-        Delegation memory d = _buildAllCaveatsDelegation(70);
-
-        // First tx: 6 ETH (above 5 ETH threshold) — triggers cooldown
-        _redeem(d, Action({
-            target: address(vault),
-            value: 6 ether,
-            callData: abi.encodeCall(DeFiVault.deposit, ())
-        }));
-
-        // Immediately try another high-value tx with same delegation
-        bool ok = _tryRedeem(d, Action({
-            target: address(vault),
-            value: 7 ether,
-            callData: abi.encodeCall(DeFiVault.deposit, ())
-        }));
-        assertFalse(ok, "Cooldown period not elapsed");
+        Delegation memory del = _buildAllCaveatsDelegation(70);
+        _redeemAs(agentOperator, del, Action({target: address(vault), value: 6 ether, callData: abi.encodeCall(DeFiVault.deposit, ())}));
+        bool ok = _tryRedeemAs(agentOperator, del, Action({target: address(vault), value: 7 ether, callData: abi.encodeCall(DeFiVault.deposit, ())}));
+        assertFalse(ok);
     }
-
-    // =========================================================================
-    // Combined scenarios
-    // =========================================================================
 
     function test_whitelistPlusFunctionSelector_onlyAllowedFunctionsOnAllowedContracts() public {
         address[] memory allowedContracts = new address[](1);
         allowedContracts[0] = address(vault);
-
         bytes4[] memory allowedSelectors = new bytes4[](1);
         allowedSelectors[0] = DeFiVault.deposit.selector;
 
         Caveat[] memory caveats = new Caveat[](2);
-        caveats[0] = Caveat({
-            enforcer: address(whitelist),
-            terms: abi.encode(allowedContracts)
-        });
-        caveats[1] = Caveat({
-            enforcer: address(funcSelector),
-            terms: abi.encode(allowedSelectors)
-        });
+        caveats[0] = Caveat({enforcer: address(d.contractWhitelist), terms: abi.encode(allowedContracts)});
+        caveats[1] = Caveat({enforcer: address(d.functionSelector), terms: abi.encode(allowedSelectors)});
 
-        Delegation memory d;
-        d.delegator = address(account);
-        d.delegate = agentOperator;
-        d.authority = address(0);
-        d.caveats = caveats;
-        d.salt = 80;
+        Delegation memory del;
+        del.delegator = address(account);
+        del.delegate = agentOperator;
+        del.authority = address(0);
+        del.caveats = caveats;
+        del.salt = 80;
+        del = _signDelegation(del, ownerKey);
 
-        bytes32 dHash = this._helperGetHash(d);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, dHash);
-        d.signature = abi.encodePacked(r, s, v);
-
-        // deposit on vault — OK
-        _redeem(d, Action({
-            target: address(vault),
-            value: 1 ether,
-            callData: abi.encodeCall(DeFiVault.deposit, ())
-        }));
+        _redeemAs(agentOperator, del, Action({target: address(vault), value: 1 ether, callData: abi.encodeCall(DeFiVault.deposit, ())}));
         assertEq(vault.deposited(), 1 ether);
 
-        // swap on vault — blocked by function selector
-        Delegation memory d2;
-        d2.delegator = address(account);
-        d2.delegate = agentOperator;
-        d2.authority = address(0);
-        d2.caveats = caveats;
-        d2.salt = 81;
-        bytes32 dHash2 = this._helperGetHash(d2);
-        (v, r, s) = vm.sign(ownerKey, dHash2);
-        d2.signature = abi.encodePacked(r, s, v);
+        // swap blocked
+        Delegation memory del2;
+        del2.delegator = address(account);
+        del2.delegate = agentOperator;
+        del2.authority = address(0);
+        del2.caveats = caveats;
+        del2.salt = 81;
+        del2 = _signDelegation(del2, ownerKey);
+        bool ok = _tryRedeemAs(agentOperator, del2, Action({target: address(vault), value: 0, callData: abi.encodeCall(DeFiVault.swap, (100, 90))}));
+        assertFalse(ok);
 
-        bool ok = _tryRedeem(d2, Action({
-            target: address(vault),
-            value: 0,
-            callData: abi.encodeCall(DeFiVault.swap, (100, 90))
-        }));
-        assertFalse(ok, "swap selector not allowed");
-
-        // deposit on rogue contract — blocked by whitelist
-        Delegation memory d3;
-        d3.delegator = address(account);
-        d3.delegate = agentOperator;
-        d3.authority = address(0);
-        d3.caveats = caveats;
-        d3.salt = 82;
-        bytes32 dHash3 = this._helperGetHash(d3);
-        (v, r, s) = vm.sign(ownerKey, dHash3);
-        d3.signature = abi.encodePacked(r, s, v);
-
-        ok = _tryRedeem(d3, Action({
-            target: makeAddr("rogue"),
-            value: 0,
-            callData: abi.encodeCall(DeFiVault.deposit, ())
-        }));
-        assertFalse(ok, "rogue contract not whitelisted");
+        // rogue contract blocked
+        Delegation memory del3;
+        del3.delegator = address(account);
+        del3.delegate = agentOperator;
+        del3.authority = address(0);
+        del3.caveats = caveats;
+        del3.salt = 82;
+        del3 = _signDelegation(del3, ownerKey);
+        ok = _tryRedeemAs(agentOperator, del3, Action({target: makeAddr("rogue"), value: 0, callData: abi.encodeCall(DeFiVault.deposit, ())}));
+        assertFalse(ok);
     }
 
     function test_spendingCapPlusSingleTxCap_bothEnforced() public {
         Caveat[] memory caveats = new Caveat[](2);
-        // Daily cap: 15 ETH
-        caveats[0] = Caveat({
-            enforcer: address(spendingCap),
-            terms: abi.encode(uint256(15 ether), uint256(1 days))
-        });
-        // Per-tx cap: 8 ETH
-        caveats[1] = Caveat({
-            enforcer: address(singleTxCap),
-            terms: abi.encode(uint256(8 ether))
-        });
+        caveats[0] = Caveat({enforcer: address(d.spendingCap), terms: abi.encode(uint256(15 ether), uint256(1 days))});
+        caveats[1] = Caveat({enforcer: address(d.singleTxCap), terms: abi.encode(uint256(8 ether))});
 
-        Delegation memory d;
-        d.delegator = address(account);
-        d.delegate = agentOperator;
-        d.authority = address(0);
-        d.caveats = caveats;
-        d.salt = 90;
-
-        bytes32 dHash = this._helperGetHash(d);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, dHash);
-        d.signature = abi.encodePacked(r, s, v);
+        Delegation memory del;
+        del.delegator = address(account);
+        del.delegate = agentOperator;
+        del.authority = address(0);
+        del.caveats = caveats;
+        del.salt = 90;
+        del = _signDelegation(del, ownerKey);
 
         address payable recipient = payable(makeAddr("recipient"));
-
-        // 7 ETH — within both caps
-        _redeem(d, Action({target: recipient, value: 7 ether, callData: ""}));
+        _redeemAs(agentOperator, del, Action({target: recipient, value: 7 ether, callData: ""}));
         assertEq(recipient.balance, 7 ether);
 
-        // 9 ETH — exceeds single tx cap (8)
-        Delegation memory d2;
-        d2.delegator = address(account);
-        d2.delegate = agentOperator;
-        d2.authority = address(0);
-        d2.caveats = caveats;
-        d2.salt = 91;
-        bytes32 dHash2 = this._helperGetHash(d2);
-        (v, r, s) = vm.sign(ownerKey, dHash2);
-        d2.signature = abi.encodePacked(r, s, v);
-
-        bool ok = _tryRedeem(d2, Action({target: recipient, value: 9 ether, callData: ""}));
-        assertFalse(ok, "Exceeds single tx cap");
+        Delegation memory del2;
+        del2.delegator = address(account);
+        del2.delegate = agentOperator;
+        del2.authority = address(0);
+        del2.caveats = caveats;
+        del2.salt = 91;
+        del2 = _signDelegation(del2, ownerKey);
+        bool ok = _tryRedeemAs(agentOperator, del2, Action({target: recipient, value: 9 ether, callData: ""}));
+        assertFalse(ok);
     }
 }
