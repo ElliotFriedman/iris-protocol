@@ -20,6 +20,20 @@ contract MockTarget {
     receive() external payable {}
 }
 
+/// @title RevertingTarget
+/// @notice A mock that always reverts, used to test execution failure paths.
+contract RevertingTarget {
+    error AlwaysReverts();
+
+    function doRevert() external pure {
+        revert AlwaysReverts();
+    }
+
+    fallback() external payable {
+        revert AlwaysReverts();
+    }
+}
+
 /// @title IrisAccountTest
 /// @notice Tests for IrisAccount and IrisAccountFactory.
 contract IrisAccountTest is Test {
@@ -233,5 +247,212 @@ contract IrisAccountTest is Test {
         (bool ok,) = account.call{value: 1 ether}("");
         assertTrue(ok);
         assertEq(account.balance, 1 ether);
+    }
+
+    // -------------------------------------------------------------------------
+    // Execution failure paths
+    // -------------------------------------------------------------------------
+
+    function test_executeRevertsOnCallFailure() public {
+        address account = factory.createAccount(owner, address(delegationManager), 0);
+        RevertingTarget reverter = new RevertingTarget();
+
+        vm.prank(owner);
+        vm.expectRevert(IrisAccount.ExecutionFailed.selector);
+        IrisAccount(payable(account)).execute(
+            address(reverter), 0, abi.encodeWithSignature("doRevert()")
+        );
+    }
+
+    function test_executeBatchRevertsOnCallFailure() public {
+        address account = factory.createAccount(owner, address(delegationManager), 0);
+        RevertingTarget reverter = new RevertingTarget();
+
+        address[] memory targets = new address[](2);
+        targets[0] = address(target);
+        targets[1] = address(reverter);
+
+        uint256[] memory values = new uint256[](2);
+        values[0] = 0;
+        values[1] = 0;
+
+        bytes[] memory calldatas = new bytes[](2);
+        calldatas[0] = abi.encodeWithSignature("doSomething(uint256)", 1);
+        calldatas[1] = abi.encodeWithSignature("doRevert()");
+
+        vm.prank(owner);
+        vm.expectRevert(IrisAccount.ExecutionFailed.selector);
+        IrisAccount(payable(account)).executeBatch(targets, values, calldatas);
+    }
+
+    function test_executeBatchEmpty() public {
+        address account = factory.createAccount(owner, address(delegationManager), 0);
+
+        address[] memory targets = new address[](0);
+        uint256[] memory values = new uint256[](0);
+        bytes[] memory calldatas = new bytes[](0);
+
+        vm.prank(owner);
+        bytes[] memory results = IrisAccount(payable(account)).executeBatch(targets, values, calldatas);
+        assertEq(results.length, 0);
+    }
+
+    function test_executeBatchLengthMismatchReverts() public {
+        address account = factory.createAccount(owner, address(delegationManager), 0);
+
+        address[] memory targets = new address[](2);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](2);
+
+        vm.prank(owner);
+        vm.expectRevert("Length mismatch");
+        IrisAccount(payable(account)).executeBatch(targets, values, calldatas);
+    }
+
+    // -------------------------------------------------------------------------
+    // validateUserOp: missingAccountFunds path
+    // -------------------------------------------------------------------------
+
+    function test_validateUserOp_validSignatureWithFunds() public {
+        address account = factory.createAccount(owner, address(delegationManager), 0);
+        vm.deal(account, 10 ether);
+
+        bytes32 userOpHash = keccak256("test");
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", userOpHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        PackedUserOperation memory userOp;
+        userOp.sender = account;
+        userOp.signature = signature;
+
+        address entryPoint = IrisAccount(payable(account)).ENTRY_POINT();
+        uint256 entryPointBalBefore = entryPoint.balance;
+
+        vm.prank(entryPoint);
+        uint256 result = IrisAccount(payable(account)).validateUserOp(userOp, userOpHash, 1 ether);
+        assertEq(result, 0);
+        assertEq(entryPoint.balance, entryPointBalBefore + 1 ether);
+    }
+
+    function test_validateUserOp_invalidSignatureReturnsOne() public {
+        address account = factory.createAccount(owner, address(delegationManager), 0);
+        bytes32 userOpHash = keccak256("test2");
+
+        (, uint256 wrongKey) = makeAddrAndKey("wrongKey2");
+        bytes32 ethSignedHash = keccak256(abi.encodePacked("\x19Ethereum Signed Message:\n32", userOpHash));
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongKey, ethSignedHash);
+        bytes memory signature = abi.encodePacked(r, s, v);
+
+        PackedUserOperation memory userOp;
+        userOp.sender = account;
+        userOp.signature = signature;
+
+        address entryPoint = IrisAccount(payable(account)).ENTRY_POINT();
+        vm.prank(entryPoint);
+        uint256 result = IrisAccount(payable(account)).validateUserOp(userOp, userOpHash, 0);
+        assertEq(result, 1);
+    }
+
+    // -------------------------------------------------------------------------
+    // Delegation: revocation then validity check
+    // -------------------------------------------------------------------------
+
+    function test_isDelegationValidReturnsFalseAfterRevocation() public {
+        address account = factory.createAccount(owner, address(delegationManager), 0);
+        bytes32 hash = bytes32(uint256(42));
+
+        // Valid before revocation.
+        assertTrue(IrisAccount(payable(account)).isDelegationValid(hash));
+
+        vm.prank(owner);
+        IrisAccount(payable(account)).revokeDelegation(hash);
+
+        // Invalid after revocation.
+        assertFalse(IrisAccount(payable(account)).isDelegationValid(hash));
+    }
+
+    // -------------------------------------------------------------------------
+    // setDelegationManager: non-owner revert
+    // -------------------------------------------------------------------------
+
+    function test_setDelegationManagerRevertsForNonOwner() public {
+        address account = factory.createAccount(owner, address(delegationManager), 0);
+        address attacker = makeAddr("attacker");
+
+        vm.prank(attacker);
+        vm.expectRevert(IrisAccount.OnlyOwner.selector);
+        IrisAccount(payable(account)).setDelegationManager(address(0));
+    }
+
+    // -------------------------------------------------------------------------
+    // Factory: different owners, getAddress consistency
+    // -------------------------------------------------------------------------
+
+    function test_factoryCreatesAccountWithDifferentOwners() public {
+        address owner2 = makeAddr("owner2");
+        address a1 = factory.createAccount(owner, address(delegationManager), 0);
+        address a2 = factory.createAccount(owner2, address(delegationManager), 0);
+        assertTrue(a1 != a2);
+        assertEq(IrisAccount(payable(a1)).owner(), owner);
+        assertEq(IrisAccount(payable(a2)).owner(), owner2);
+    }
+
+    function test_factoryGetAddressConsistency() public {
+        // Predict address before deployment.
+        address predicted = factory.getAddress(owner, address(delegationManager), 7);
+        assertTrue(predicted != address(0));
+
+        // Deploy and verify match.
+        address actual = factory.createAccount(owner, address(delegationManager), 7);
+        assertEq(predicted, actual);
+
+        // getAddress still returns the same value after deployment.
+        address postDeploy = factory.getAddress(owner, address(delegationManager), 7);
+        assertEq(predicted, postDeploy);
+    }
+
+    function test_factoryCreateAccountReturnsExistingWithoutEvent() public {
+        // First creation emits event.
+        vm.expectEmit(true, true, false, false);
+        emit IrisAccountFactory.AccountCreated(
+            factory.getAddress(owner, address(delegationManager), 0), owner
+        );
+        address first = factory.createAccount(owner, address(delegationManager), 0);
+
+        // Second call returns the same address without reverting.
+        address second = factory.createAccount(owner, address(delegationManager), 0);
+        assertEq(first, second);
+    }
+
+    // -------------------------------------------------------------------------
+    // Receive ETH via direct transfer (additional)
+    // -------------------------------------------------------------------------
+
+    function test_receiveETHViaTransfer() public {
+        address account = factory.createAccount(owner, address(delegationManager), 0);
+        vm.deal(address(this), 2 ether);
+
+        // Send ETH with empty calldata to hit receive().
+        (bool ok,) = payable(account).call{value: 0.5 ether}("");
+        assertTrue(ok);
+        assertEq(account.balance, 0.5 ether);
+    }
+
+    // -------------------------------------------------------------------------
+    // executeBatch: non-owner revert
+    // -------------------------------------------------------------------------
+
+    function test_executeBatchRevertsForNonOwner() public {
+        address account = factory.createAccount(owner, address(delegationManager), 0);
+        address attacker = makeAddr("attacker");
+
+        address[] memory targets = new address[](1);
+        uint256[] memory values = new uint256[](1);
+        bytes[] memory calldatas = new bytes[](1);
+
+        vm.prank(attacker);
+        vm.expectRevert(IrisAccount.OnlyOwnerOrDelegationManager.selector);
+        IrisAccount(payable(account)).executeBatch(targets, values, calldatas);
     }
 }
