@@ -1,19 +1,17 @@
 # Compiler files
-cache/
-out/
+contracts/cache/
+contracts/out/
 
 # Ignores development broadcast logs
 /broadcast
 /broadcast/*/31337/
-
-# Docs
-docs/
 
 # Dotenv file
 .env
 
 # Node
 node_modules/
+.next/
 
 # Coverage
 lcov.info

@@ -1,3 +1,0 @@
-# Lines starting with '#' are comments.
-# The '*' pattern matches all files in the repository.
-* @MetaMask/delegation
