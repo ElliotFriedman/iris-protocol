@@ -315,9 +315,9 @@ function SlideNovelContribution() {
 
 function SlideSecurity() {
   const points = [
-    { value: "158", label: "tests passing", color: "text-mint" },
+    { value: "152", label: "tests passing", color: "text-mint" },
+    { value: "53", label: "Halmos symbolic proofs across 10 suites", color: "text-electric-cyan" },
     { value: "TOCTOU", label: "vulnerability found and fixed", color: "text-signal-red" },
-    { value: "4", label: "security layers: Account, Delegation, Caveat, Reputation", color: "text-electric-cyan" },
   ];
 
   return (
