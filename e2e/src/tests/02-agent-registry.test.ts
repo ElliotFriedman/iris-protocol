@@ -55,16 +55,17 @@ describe("Agent registry and reputation", () => {
   });
 
   it("should increase reputation with positive feedback", async () => {
-    // Deployer is the oracle owner and can submit feedback
+    // Use the fresh agent (ID 2) so this test is isolated from delegation-flow tests
     const deployerWallet = getWalletClient(
       "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
     );
 
+    // Fresh agent starts at 50; first feedback initialises and adds +2 = 52
     const hash = await deployerWallet.writeContract({
       address: manifest.contracts.IrisReputationOracle,
       abi: IrisReputationOracleABI,
       functionName: "submitFeedback",
-      args: [BigInt(manifest.agentId), true],
+      args: [2n, true],
     });
     await client.waitForTransactionReceipt({ hash });
 
@@ -72,10 +73,9 @@ describe("Agent registry and reputation", () => {
       address: manifest.contracts.IrisReputationOracle,
       abi: IrisReputationOracleABI,
       functionName: "getReputationScore",
-      args: [BigInt(manifest.agentId)],
+      args: [2n],
     });
-    // Was 76, now 78
-    expect(Number(score)).toBe(78);
+    expect(Number(score)).toBe(52);
   });
 
   it("should decrease reputation with negative feedback", async () => {
@@ -83,11 +83,12 @@ describe("Agent registry and reputation", () => {
       "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
     );
 
+    // Agent 2 was at 52; negative feedback: 52 - 5 = 47
     const hash = await deployerWallet.writeContract({
       address: manifest.contracts.IrisReputationOracle,
       abi: IrisReputationOracleABI,
       functionName: "submitFeedback",
-      args: [BigInt(manifest.agentId), false],
+      args: [2n, false],
     });
     await client.waitForTransactionReceipt({ hash });
 
@@ -95,10 +96,9 @@ describe("Agent registry and reputation", () => {
       address: manifest.contracts.IrisReputationOracle,
       abi: IrisReputationOracleABI,
       functionName: "getReputationScore",
-      args: [BigInt(manifest.agentId)],
+      args: [2n],
     });
-    // Was 78, now 73 (-5)
-    expect(Number(score)).toBe(73);
+    expect(Number(score)).toBe(47);
   });
 
   it("should deactivate an agent", async () => {

@@ -132,10 +132,18 @@ describe("Delegation flow (EIP-712)", () => {
   });
 
   it("should block redemption when spending cap is exceeded", async () => {
-    // Try to transfer more than the cap allows in a single tx
+    // SpendingCapEnforcer checks action.value (ETH), not ERC-20 amounts
+    // Fund the owner account with ETH first
+    const fundHash = await ownerWallet.sendTransaction({
+      to: manifest.accounts.ownerAccount,
+      value: parseEther("100"),
+    });
+    await client.waitForTransactionReceipt({ hash: fundHash });
+
+    // Cap at 1 ETH
     const spendingTerms = encodeAbiParameters(
       [{ type: "uint256" }, { type: "uint256" }],
-      [parseEther("50"), 86400n] // only 50 allowed
+      [parseEther("1"), 86400n]
     );
 
     const delegation = {
@@ -148,7 +156,7 @@ describe("Delegation flow (EIP-712)", () => {
           terms: spendingTerms,
         },
       ],
-      salt: 100n, // different salt for fresh delegation
+      salt: 100n,
     };
 
     const signature = await ownerWallet.signTypedData({
@@ -158,17 +166,10 @@ describe("Delegation flow (EIP-712)", () => {
       message: delegation,
     });
 
-    const transferCalldata = encodeFunctionData({
-      abi: MockERC20ABI,
-      functionName: "transfer",
-      args: [
-        "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65" as Address,
-        parseEther("200"), // exceeds 50 cap
-      ],
-    });
-
     const signedDelegation = { ...delegation, signature };
+    const recipient = "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65" as Address;
 
+    // Try to send 5 ETH — exceeds 1 ETH cap
     await expect(
       agentWallet.writeContract({
         address: manifest.contracts.IrisDelegationManager,
@@ -177,9 +178,9 @@ describe("Delegation flow (EIP-712)", () => {
         args: [
           [signedDelegation],
           {
-            target: manifest.contracts.MockERC20,
-            value: 0n,
-            callData: transferCalldata,
+            target: recipient,
+            value: parseEther("5"),
+            callData: "0x" as `0x${string}`,
           },
         ],
       })

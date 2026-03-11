@@ -47,10 +47,14 @@ echo ""
 
 # 3. Deploy contracts
 echo "[e2e] Deploying contracts to local Anvil..."
+mkdir -p "$CONTRACTS_DIR/deployments"
 (cd "$CONTRACTS_DIR" && forge script script/DeployLocal.s.sol:DeployLocal \
   --rpc-url http://127.0.0.1:8545 \
   --broadcast \
   --silent)
+# Copy manifest to root deployments dir
+mkdir -p "$ROOT_DIR/deployments"
+cp "$CONTRACTS_DIR/deployments/local.json" "$ROOT_DIR/deployments/local.json"
 echo "[e2e] Deployment complete."
 echo ""
 
