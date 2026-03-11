@@ -59,28 +59,20 @@ contract ReputationGateEnforcer is ICaveatEnforcer {
     ///         the minimum threshold encoded in `terms`.
     /// @dev The reputation oracle is called via a static call to `getReputationScore(uint256)`.
     ///      If the oracle reverts or returns a score below `minScore`, this hook reverts.
-    /// @param terms ABI-encoded `(address reputationOracle, uint256 agentId, uint256 minScore)`.
-    ///        - `reputationOracle`: must be a non-zero address implementing `getReputationScore`.
-    ///        - `agentId`: the ERC-8004 identity token ID of the executing agent.
-    ///        - `minScore`: the minimum reputation score (inclusive) required for execution.
-    /// @param args Unused runtime arguments (reserved for future extensions).
-    /// @param delegationManager The delegation manager invoking this enforcer.
-    /// @param delegationHash The hash of the delegation being redeemed.
-    /// @param delegator The account that created the delegation.
-    /// @param redeemer The agent or account redeeming the delegation.
-    /// @param target The target contract of the delegated execution.
-    /// @param value The ETH value of the delegated execution.
-    /// @param callData The calldata of the delegated execution.
+    ///      Terms encoding: `abi.encode(address reputationOracle, uint256 agentId, uint256 minScore)`.
+    ///      - `reputationOracle`: must be a non-zero address implementing `getReputationScore`.
+    ///      - `agentId`: the ERC-8004 identity token ID of the executing agent.
+    ///      - `minScore`: the minimum reputation score (inclusive) required for execution.
     function beforeHook(
         bytes calldata terms,
-        bytes calldata args,
-        address delegationManager,
-        bytes32 delegationHash,
-        address delegator,
-        address redeemer,
-        address target,
-        uint256 value,
-        bytes calldata callData
+        bytes calldata,
+        address,
+        bytes32,
+        address,
+        address,
+        address,
+        uint256,
+        bytes calldata
     ) external override {
         (address reputationOracle, uint256 agentId, uint256 minScore) =
             abi.decode(terms, (address, uint256, uint256));
@@ -100,25 +92,16 @@ contract ReputationGateEnforcer is ICaveatEnforcer {
     /// @notice Called after the delegated execution. No-op for this enforcer.
     /// @dev The reputation gate is a pre-execution check only; post-execution enforcement is
     ///      intentionally omitted because the reputation score is an input condition, not an output invariant.
-    /// @param terms Unused.
-    /// @param args Unused.
-    /// @param delegationManager Unused.
-    /// @param delegationHash Unused.
-    /// @param delegator Unused.
-    /// @param redeemer Unused.
-    /// @param target Unused.
-    /// @param value Unused.
-    /// @param callData Unused.
     function afterHook(
-        bytes calldata terms,
-        bytes calldata args,
-        address delegationManager,
-        bytes32 delegationHash,
-        address delegator,
-        address redeemer,
-        address target,
-        uint256 value,
-        bytes calldata callData
+        bytes calldata,
+        bytes calldata,
+        address,
+        bytes32,
+        address,
+        address,
+        address,
+        uint256,
+        bytes calldata
     ) external pure override {
         // Intentional no-op. Reputation is a pre-condition, not a post-condition.
     }

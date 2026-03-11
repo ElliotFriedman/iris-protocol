@@ -1,0 +1,61 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+:root {
+  --background: #0D0D14;
+  --foreground: #E8E6E1;
+  --iris-purple: #7B2FBE;
+  --electric-cyan: #00F0FF;
+  --void: #0D0D14;
+  --obsidian: #1A1A2E;
+  --graphite: #2A2A3E;
+  --bone: #E8E6E1;
+  --ash: #8A8A9A;
+  --amber: #FFB800;
+  --signal-red: #FF3B5C;
+  --mint: #00E88F;
+  --charcoal: #1A1A2E;
+  --charcoal-light: #232340;
+  --charcoal-lighter: #2D2D50;
+}
+
+@theme inline {
+  --color-background: #0D0D14;
+  --color-foreground: #E8E6E1;
+  --color-iris-purple: #7B2FBE;
+  --color-electric-cyan: #00F0FF;
+  --color-void: #0D0D14;
+  --color-obsidian: #1A1A2E;
+  --color-graphite: #2A2A3E;
+  --color-bone: #E8E6E1;
+  --color-ash: #8A8A9A;
+  --color-amber: #FFB800;
+  --color-signal-red: #FF3B5C;
+  --color-mint: #00E88F;
+  --color-charcoal: #1A1A2E;
+  --color-charcoal-light: #232340;
+  --color-charcoal-lighter: #2D2D50;
+  --font-sans: 'Inter', sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Inter', sans-serif;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #0D0D14;
+}
+::-webkit-scrollbar-thumb {
+  background: #7B2FBE;
+  border-radius: 3px;
+}

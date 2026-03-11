@@ -1,0 +1,11 @@
+{
+  "name": "iris-protocol",
+  "private": true,
+  "scripts": {
+    "build:contracts": "cd packages/contracts && forge build",
+    "test:contracts": "cd packages/contracts && forge test",
+    "dev:app": "cd packages/app && pnpm dev",
+    "dev:landing": "cd packages/landing && pnpm dev",
+    "test:e2e": "cd packages/e2e && pnpm test"
+  }
+}
