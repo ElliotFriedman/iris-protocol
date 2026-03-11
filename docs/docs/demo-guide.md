@@ -11,183 +11,163 @@ This guide walks through the 9-step demo flow that demonstrates Iris Protocol's 
 
 - [Foundry](https://book.getfoundry.sh/getting-started/installation) installed
 - Node.js 18+
-- A Base Sepolia RPC URL
-- Test ETH on Base Sepolia
 
 ## Running the Demo Locally
 
 ```bash
-# Clone the repo
+# Clone and build
 git clone https://github.com/iris-protocol/iris-protocol.git
-cd iris-protocol
+cd iris-protocol/contracts
+forge install && forge build
 
-# Install dependencies
-forge install
-cd demo && npm install
+# Start Anvil and deploy
+anvil &
+forge script script/DeployLocal.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
 
-# Set environment variables
-cp .env.example .env
-# Edit .env with your RPC URL and private keys
-
-# Deploy contracts to local fork
-anvil --fork-url $BASE_SEPOLIA_RPC &
-forge script script/Deploy.s.sol --rpc-url http://localhost:8545 --broadcast
-
-# Start the demo app
-cd demo && npm run dev
+# Run the demo script
+forge script script/Demo.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
 ```
 
 ## The 9-Step Flow
 
 ### Step 1: Agent Registers on ERC-8004
 
-The AI agent registers its identity in the IrisAgentRegistry, minting a non-transferable identity NFT.
+The AI agent registers its identity in the IrisAgentRegistry, minting a lightweight identity NFT.
 
 ```solidity
-// Agent calls register()
-uint256 tokenId = agentRegistry.register("ipfs://agent-metadata");
+// Agent calls registerAgent()
+uint256 agentId = agentRegistry.registerAgent("ipfs://agent-metadata");
 // Agent starts with reputation score of 50
 ```
 
-**What to observe:** The agent now has an onchain identity. Its initial reputation score is 50, making it eligible for Tier 1 delegations.
-
-`[Screenshot placeholder: Agent registration transaction confirmation]`
+**What to observe:** The agent now has an onchain identity with an `agentId`. Its initial reputation score is 50.
 
 ### Step 2: User Creates Iris Wallet
 
 The user deploys an IrisAccount (ERC-4337 smart contract wallet) via the factory.
 
 ```solidity
-IrisAccount wallet = factory.createAccount(userAddress, salt);
+address wallet = factory.createAccount(
+    userAddress,
+    address(delegationManager),
+    0  // salt
+);
 ```
 
 **What to observe:** The user now has a smart contract wallet that supports delegations. The wallet address is deterministic.
-
-`[Screenshot placeholder: Wallet creation with address displayed]`
 
 ### Step 3: Agent Requests Tier 1 Access
 
 The agent requests a Tier 1 (Supervised) delegation from the user. This follows the ERC-7715 permission request flow.
 
 ```solidity
-// Agent submits a permission request
-// User sees: "Agent X requests Tier 1 access to your wallet"
-// Tier 1 includes: $100/day spend cap, $50/tx cap, approved contracts only
+// User sees: "Agent #1 (reputation: 50/100) requests:
+//   spend up to X ETH/day on whitelisted contracts, valid 7 days"
 ```
 
 **What to observe:** The user sees a clear breakdown of what Tier 1 access means -- spending limits, contract restrictions, and reputation requirements.
 
-`[Screenshot placeholder: Permission request UI with tier details]`
-
 ### Step 4: User Approves Delegation
 
-The user approves the delegation request, signing the delegation offchain (EIP-712).
+The user approves the delegation request by building and signing a delegation with EIP-712.
 
 ```solidity
-// User approves -- TierOnePreset creates the delegation
-bytes32 delegationHash = tierOnePreset.createTierOneDelegation(
-    delegationManager,
-    agentAddress,
-    approvedContracts,
-    allowedSelectors,
-    validUntil
+// Build Tier 1 caveat array
+Caveat[] memory caveats = TierOne.configureTierOne(
+    address(spendingCap), address(whitelist), address(timeWindow),
+    address(reputationGate), address(reputationOracle), agentId,
+    dailyCap, allowedContracts, validUntil, minReputation
 );
+
+// Construct delegation and sign with EIP-712
+Delegation memory del = Delegation({
+    delegator: address(account), delegate: agentOperator,
+    authority: address(0), caveats: caveats, salt: 1, signature: ""
+});
+bytes32 hash = delegationManager.getDelegationHash(del);
+// User signs hash...
 ```
 
-**What to observe:** The delegation is created with all Tier 1 caveat enforcers attached. The agent can now execute transactions within the defined bounds.
+**What to observe:** The delegation is created with all Tier 1 caveat enforcers attached.
 
-`[Screenshot placeholder: Delegation approval confirmation]`
+### Step 5: Agent Executes a Swap -- Succeeds
 
-### Step 5: Agent Executes $50 Swap -- Succeeds
-
-The agent redeems its delegation to execute a $50 token swap on an approved DEX.
+The agent redeems its delegation to execute a transaction on an approved contract.
 
 ```solidity
-// Agent redeems delegation for a $50 swap
-delegationManager.redeemDelegation(delegation, swapCalldata);
-// All caveat enforcers pass:
-// ✅ SpendingCap: $50 < $100/day
-// ✅ SingleTxCap: $50 <= $50
-// ✅ ContractWhitelist: Uniswap is approved
-// ✅ FunctionSelector: swap() is allowed
-// ✅ ReputationGate: score 50 >= 50
-// → Transaction executes successfully
+// Agent redeems delegation
+Delegation[] memory chain = new Delegation[](1);
+chain[0] = signedDelegation;
+
+delegationManager.redeemDelegation(chain, Action({
+    target: address(vault), value: 3 ether,
+    callData: abi.encodeCall(Vault.deposit, ())
+}));
+// All caveat enforcers pass -- transaction executes
 ```
 
-**What to observe:** The transaction succeeds because it satisfies every caveat enforcer. The agent's reputation increases slightly.
+**What to observe:** The transaction succeeds because it satisfies every caveat enforcer.
 
-`[Screenshot placeholder: Successful swap transaction with enforcer checkmarks]`
+### Step 6: Agent Attempts Excess Spend -- Blocked
 
-### Step 6: Agent Attempts $200 Swap -- Blocked
-
-The agent attempts a $200 swap, exceeding the Tier 1 single-transaction cap.
+The agent attempts a transaction that would exceed a caveat limit.
 
 ```solidity
-// Agent attempts a $200 swap
-delegationManager.redeemDelegation(delegation, largeSwapCalldata);
-// ❌ SingleTxCap: $200 > $50 cap
-// → Transaction REVERTS with SingleTxCapExceeded(200e18, 50e18)
+// Agent attempts too-large transaction
+delegationManager.redeemDelegation(chain, Action({
+    target: address(vault), value: 25 ether,  // exceeds daily cap
+    callData: abi.encodeCall(Vault.deposit, ())
+}));
+// SpendingCapEnforcer: exceeded -- REVERTS
 ```
 
-**What to observe:** The transaction reverts onchain. The caveat enforcer blocks the operation. The agent cannot bypass this restriction because it is enforced by smart contract code, not an API.
+**What to observe:** The transaction reverts onchain. The caveat enforcer blocks the operation. The agent cannot bypass this because it is enforced by smart contract code.
 
-`[Screenshot placeholder: Blocked transaction with error message]`
+### Step 7: User Upgrades to Tier 2
 
-### Step 7: User Bumps to Tier 2
-
-The user upgrades the agent to Tier 2 (Autonomous) -- higher limits, broader permissions.
+The user upgrades the agent to Tier 2 (Autonomous) -- higher limits, additional SingleTxCap.
 
 ```solidity
 // Revoke Tier 1
-delegationManager.revokeDelegation(tierOneDelegationHash);
+delegationManager.revokeDelegation(tierOneDelegation);
 
-// Grant Tier 2
-bytes32 newHash = tierTwoPreset.createTierTwoDelegation(
-    delegationManager,
-    agentAddress,
-    expandedSelectors
-);
-// New limits: $1,000/day, $500/tx, 5-min cooldown, reputation >= 70
+// Build and sign Tier 2 delegation
+Caveat[] memory caveats = TierTwo.configureTierTwo(...);
+// ... sign new delegation
 ```
 
-**What to observe:** The old delegation is instantly revoked. The new Tier 2 delegation has higher caps. The agent can now execute the $200 swap.
-
-`[Screenshot placeholder: Tier upgrade UI]`
+**What to observe:** The old delegation is instantly revoked. The new Tier 2 delegation has higher caps.
 
 ### Step 8: Reputation Drop -- Execution Blocked
 
-The agent's reputation score drops (simulated via the oracle) below the Tier 2 minimum of 70.
+The agent's reputation score drops below the delegation's minimum requirement.
 
 ```solidity
-// Reputation drops to 60 (simulated)
-reputationOracle.reportNegative(agentAddress, action, 25);
-// Agent score: 85 → 60
+// Negative feedback submitted
+reputationOracle.submitFeedback(agentId, false);  // -5
+reputationOracle.submitFeedback(agentId, false);  // -5
+reputationOracle.submitFeedback(agentId, false);  // -5
+// Agent score drops below minReputation threshold
 
-// Agent attempts to use Tier 2 delegation
-delegationManager.redeemDelegation(delegation, calldata);
-// ❌ ReputationGate: score 60 < 70 required
-// → Transaction REVERTS with ReputationTooLow(agent, 60, 70)
+// Agent attempts to use delegation
+delegationManager.redeemDelegation(chain, action);
+// ReputationGateEnforcer: score < minScore -- REVERTS
 ```
 
-**What to observe:** Even though the delegation was legitimately granted, the reputation enforcer blocks execution in real-time. No one manually revoked the delegation. The protocol itself detected the reputation change and blocked the agent. This is the novel contribution.
-
-`[Screenshot placeholder: Reputation-based block with score visualization]`
+**What to observe:** Even though the delegation was legitimately granted, the reputation enforcer blocks execution in real-time. No one manually revoked the delegation. The protocol itself detected the reputation change and blocked the agent. This is the dynamic reputation gate in action.
 
 ### Step 9: User Revokes All Delegations
 
-The user revokes all outstanding delegations in a single transaction.
+The user revokes all outstanding delegations.
 
 ```solidity
-// User revokes all delegations
-delegationManager.revokeDelegation(tierTwoDelegationHash);
+delegationManager.revokeDelegation(delegation);
 // All agent access is immediately terminated
 ```
 
 **What to observe:** Instant revocation. The agent has zero access to the wallet. Any subsequent attempt to redeem the delegation will revert.
 
-`[Screenshot placeholder: Revocation confirmation with clean state]`
-
-## Key Takeaways for Judges
+## Key Takeaways
 
 1. **Every permission check is onchain.** No API servers, no TEEs, no trusted intermediaries.
 2. **Reputation gates are dynamic.** Step 8 demonstrates that permissions degrade in real-time based on onchain state, without manual intervention.
@@ -201,5 +181,5 @@ delegationManager.revokeDelegation(tierTwoDelegationHash);
 |-------|----------|
 | Contracts not deploying | Ensure Foundry is up to date: `foundryup` |
 | Transaction failing unexpectedly | Check that the agent is registered and has sufficient reputation |
-| Demo app not connecting | Verify RPC URL and that Anvil fork is running |
-| Reputation not updating | Ensure the oracle report transaction is confirmed before retesting |
+| Anvil not running | Run `anvil &` in a separate terminal |
+| Reputation not updating | Ensure the oracle feedback transaction is confirmed before retesting |

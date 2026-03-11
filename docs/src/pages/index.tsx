@@ -62,6 +62,11 @@ function HomepageHeader() {
           {siteConfig.title}
         </Heading>
         <p className="hero__subtitle">{siteConfig.tagline}</p>
+        <p style={{fontSize: '1.1rem', opacity: 0.9, maxWidth: '640px', margin: '0 auto 1.5rem'}}>
+          Smart contract wallets for AI agents with ERC-7710 delegation,
+          configurable trust tiers, and reputation-gated permissions via ERC-8004.
+          No TEEs. No key custodians. No offchain policy engines.
+        </p>
         <div className={styles.buttons}>
           <Link
             className="button button--secondary button--lg"

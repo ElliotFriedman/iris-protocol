@@ -10,9 +10,9 @@ title: Iris Protocol
 
 ## What is Iris?
 
-Iris gives AI agents their own smart contract wallets with configurable trust levels. Set the aperture: let your agent spend $100/day autonomously, queue anything above for your approval, and revoke access instantly.
+Iris Protocol gives AI agents their own smart contract wallets with configurable trust levels. Set the aperture: let your agent spend within daily caps on approved contracts, queue anything above for your approval, and revoke access instantly.
 
-All permissions enforced onchain via ERC-7710 delegations. Agent identity verified via ERC-8004. No TEEs. No key custodians. No offchain policy engines.
+All permissions enforced onchain via ERC-7710 delegations with composable caveat enforcers. Agent identity verified via ERC-8004. No TEEs. No key custodians. No offchain policy engines.
 
 ## The Problem
 
@@ -20,21 +20,21 @@ Embedded wallet providers (Privy, Turnkey, Dynamic) require trusting a company w
 
 ## The Solution
 
-Iris makes the wallet itself the policy engine. Your agent's wallet IS a smart contract. The permissions ARE caveat enforcers. The identity IS an ERC-8004 NFT. There is no company holding shards of your key.
+Iris Protocol makes the wallet itself the policy engine. Your agent's wallet IS a smart contract. The permissions ARE caveat enforcers. The identity IS an ERC-8004 NFT. There is no company holding shards of your key.
 
 ```
-User creates wallet → Sets trust tier → Agent gets scoped delegation
-                                         ↓
-                              Caveat enforcers gate every tx
-                                         ↓
-                              Reputation checked in real-time
-                                         ↓
-                              Execution succeeds or reverts onchain
+User creates wallet -- Sets trust tier -- Agent gets scoped delegation
+                                           |
+                                Caveat enforcers gate every tx
+                                           |
+                                Reputation checked in real-time
+                                           |
+                                Execution succeeds or reverts onchain
 ```
 
 ## Quick Start
 
-See the [Getting Started](./getting-started.md) guide to deploy Iris in under five minutes.
+See the [Getting Started](./getting-started.md) guide to deploy Iris Protocol in under five minutes.
 
 ## ERC Stack
 
@@ -49,4 +49,4 @@ See the [Getting Started](./getting-started.md) guide to deploy Iris in under fi
 
 ## Why This Matters
 
-AI agents will manage billions in economic value. The infrastructure securing their permissions cannot rely on a company's promise -- it must be enforced by math. Iris is the first protocol to enforce agent wallet permissions entirely onchain, with reputation-gated access that degrades dynamically when agents misbehave.
+As AI agents manage increasing economic value, the infrastructure securing their permissions benefits from onchain enforcement rather than reliance on offchain custodians. Iris Protocol enforces agent wallet permissions entirely onchain, with reputation-gated access that degrades dynamically when agents misbehave.

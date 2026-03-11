@@ -13,66 +13,121 @@ Complete Solidity interface reference for all Iris Protocol contracts.
 
 ```solidity
 /// @title IrisAccount
-/// @notice ERC-4337 smart contract wallet with ERC-7710 delegation support
+/// @notice ERC-4337 smart contract wallet with ERC-7710 delegation support (IERC7710Delegator)
+
+// ──── Constructor ────
+
+constructor(address _owner, address _delegationManager);
 
 // ──── Functions ────
 
-function execute(address target, uint256 value, bytes calldata data) external;
-function executeBatch(address[] calldata targets, uint256[] calldata values, bytes[] calldata datas) external;
-function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256 missingAccountFunds) external returns (uint256);
-function isDelegationValid(Delegation calldata delegation) external view returns (bool);
+function execute(address target, uint256 value, bytes calldata data) external returns (bytes memory result);
+function executeBatch(address[] calldata targets, uint256[] calldata values, bytes[] calldata calldatas) external returns (bytes[] memory results);
+function validateUserOp(PackedUserOperation calldata userOp, bytes32 userOpHash, uint256 missingAccountFunds) external returns (uint256 validationData);
+function isDelegationValid(bytes32 delegationHash) external view returns (bool);
+function revokeDelegation(bytes32 delegationHash) external;
+function setDelegationManager(address _delegationManager) external;
 function owner() external view returns (address);
-function transferOwnership(address newOwner) external;
+function delegationManager() external view returns (address);
 
 // ──── Events ────
 
-event Executed(address indexed target, uint256 value, bytes data);
-event BatchExecuted(address[] targets, uint256[] values);
-event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-event AccountInitialized(address indexed owner, address indexed entryPoint);
+event DelegationManagerSet(address indexed oldManager, address indexed newManager);
+event DelegationRevoked(bytes32 indexed delegationHash);
+
+// ──── Errors ────
+
+error OnlyOwner();
+error OnlyOwnerOrDelegationManager();
+error ExecutionFailed();
+error InvalidSignatureLength();
 ```
 
 ### IrisAccountFactory
 
 ```solidity
 /// @title IrisAccountFactory
-/// @notice Deterministic deployment factory for IrisAccount instances
+/// @notice Deterministic deployment factory for IrisAccount instances via CREATE2
 
-function createAccount(address owner, uint256 salt) external returns (IrisAccount);
-function getAddress(address owner, uint256 salt) external view returns (address);
+function createAccount(address owner, address delegationManager, uint256 salt) external returns (address account);
+function getAddress(address owner, address delegationManager, uint256 salt) external view returns (address predicted);
 
 event AccountCreated(address indexed account, address indexed owner);
 ```
 
-### DelegationManager
+### IrisDelegationManager
 
 ```solidity
-/// @title DelegationManager
-/// @notice ERC-7710 delegation lifecycle orchestrator
+/// @title IrisDelegationManager
+/// @notice ERC-7710 delegation lifecycle manager with EIP-712 typed data signing
 
 // ──── Functions ────
 
-function createDelegation(address delegate, Caveat[] calldata caveats) external returns (bytes32 delegationHash);
-function signDelegation(bytes32 delegationHash, bytes calldata signature) external;
-function redeemDelegation(Delegation calldata delegation, bytes calldata executionCalldata) external;
-function revokeDelegation(bytes32 delegationHash) external;
-function getDelegation(bytes32 delegationHash) external view returns (Delegation memory);
-function isDelegationRevoked(bytes32 delegationHash) external view returns (bool);
+function redeemDelegation(Delegation[] calldata delegations, Action calldata action) external;
+function revokeDelegation(Delegation calldata delegation) external;
+function getDelegationHash(Delegation calldata delegation) external view returns (bytes32);
+function domainSeparator() external view returns (bytes32);
+
+// ──── Storage ────
+
+mapping(bytes32 => bool) public revokedDelegations;
 
 // ──── Events ────
 
-event DelegationCreated(bytes32 indexed delegationHash, address indexed delegator, address indexed delegate);
-event DelegationSigned(bytes32 indexed delegationHash);
-event DelegationRedeemed(bytes32 indexed delegationHash, address indexed delegate);
-event DelegationRevoked(bytes32 indexed delegationHash);
+event DelegationRedeemed(bytes32 indexed delegationHash, address indexed delegator, address indexed delegate);
+event DelegationRevoked(bytes32 indexed delegationHash, address indexed delegator);
 
 // ──── Errors ────
 
-error DelegationNotFound(bytes32 delegationHash);
-error DelegationAlreadyRevoked(bytes32 delegationHash);
-error InvalidDelegationSignature();
-error UnauthorizedRedemption(address caller);
-error CaveatEnforcerFailed(address enforcer, bytes reason);
+error EmptyDelegationChain();
+error DelegationIsRevoked(bytes32 delegationHash);
+error InvalidSignature();
+error InvalidDelegationChain();
+error NotDelegatorOrOwner();
+error ExecutionFailed();
+error ManagerNotAuthorized();
+```
+
+### IrisApprovalQueue
+
+```solidity
+/// @title IrisApprovalQueue
+/// @notice Approval queue for agent transactions that exceed delegation limits
+
+struct ApprovalRequest {
+    address agent;
+    address target;
+    bytes callData;
+    uint256 value;
+    bytes32 delegationHash;
+    uint256 submittedAt;
+    bool approved;
+    bool rejected;
+    bool executed;
+}
+
+// ──── Functions ────
+
+function submitRequest(address target, bytes calldata callData, uint256 value, bytes32 delegationHash, address delegator) external returns (bytes32 requestId);
+function approveRequest(bytes32 requestId) external;
+function rejectRequest(bytes32 requestId) external;
+function getRequest(bytes32 requestId) external view returns (ApprovalRequest memory);
+function getPendingRequests(address delegator) external view returns (bytes32[] memory);
+function isExpired(bytes32 requestId) external view returns (bool);
+function expiryDuration() external view returns (uint256);
+
+// ──── Events ────
+
+event ApprovalRequested(bytes32 indexed requestId, address indexed agent, address indexed delegator, address target, uint256 value);
+event ApprovalGranted(bytes32 indexed requestId, address indexed delegator);
+event ApprovalRejected(bytes32 indexed requestId, address indexed delegator);
+
+// ──── Errors ────
+
+error RequestNotFound(bytes32 requestId);
+error NotDelegator(bytes32 requestId, address caller);
+error RequestAlreadyResolved(bytes32 requestId);
+error RequestExpired(bytes32 requestId);
 ```
 
 ## Caveat Enforcers
@@ -83,25 +138,44 @@ error CaveatEnforcerFailed(address enforcer, bytes reason);
 /// @title ICaveatEnforcer
 /// @notice Base interface for all caveat enforcers
 
-function beforeHook(bytes calldata terms, bytes calldata args, Delegation calldata delegation) external;
-function afterHook(bytes calldata terms, bytes calldata args, Delegation calldata delegation) external;
+function beforeHook(
+    bytes calldata terms,
+    bytes calldata args,
+    address delegationManager,
+    bytes32 delegationHash,
+    address delegator,
+    address redeemer,
+    address target,
+    uint256 value,
+    bytes calldata callData
+) external;
+
+function afterHook(
+    bytes calldata terms,
+    bytes calldata args,
+    address delegationManager,
+    bytes32 delegationHash,
+    address delegator,
+    address redeemer,
+    address target,
+    uint256 value,
+    bytes calldata callData
+) external;
 ```
 
 ### SpendingCapEnforcer
 
 ```solidity
 /// @title SpendingCapEnforcer
-/// @notice Enforces cumulative spending limits over configurable time periods
+/// @notice Enforces cumulative spending limits over configurable rolling periods
 
-struct SpendingCapTerms {
-    uint256 cap;       // Maximum spend in wei
-    uint256 period;    // Period in seconds
-}
+// Terms encoding: abi.encode(uint256 allowance, uint256 period)
+//   - allowance: Maximum spend in wei per period
+//   - period: Period length in seconds (86400 = daily, 604800 = weekly)
 
-// ──── View Functions ────
+// ──── Storage ────
 
-function getSpent(bytes32 delegationHash) external view returns (uint256);
-function getRemainingCap(bytes32 delegationHash, bytes calldata terms) external view returns (uint256);
+mapping(bytes32 => mapping(uint256 => uint256)) public periodSpend;
 
 // ──── Errors ────
 
@@ -114,9 +188,7 @@ error SpendingCapExceeded(uint256 requested, uint256 remaining);
 /// @title ContractWhitelistEnforcer
 /// @notice Restricts delegated calls to approved target contracts
 
-struct WhitelistTerms {
-    address[] allowedContracts;
-}
+// Terms encoding: abi.encode(address[] allowedContracts)
 
 error ContractNotWhitelisted(address target);
 ```
@@ -127,9 +199,7 @@ error ContractNotWhitelisted(address target);
 /// @title FunctionSelectorEnforcer
 /// @notice Restricts delegated calls to approved function selectors
 
-struct SelectorTerms {
-    bytes4[] allowedSelectors;
-}
+// Terms encoding: abi.encode(bytes4[] allowedSelectors)
 
 error SelectorNotAllowed(bytes4 selector);
 ```
@@ -140,10 +210,7 @@ error SelectorNotAllowed(bytes4 selector);
 /// @title TimeWindowEnforcer
 /// @notice Limits delegation validity to a time range
 
-struct TimeWindowTerms {
-    uint256 validAfter;
-    uint256 validBefore;
-}
+// Terms encoding: abi.encode(uint256 notBefore, uint256 notAfter)
 
 error DelegationNotYetValid(uint256 current, uint256 validAfter);
 error DelegationExpired(uint256 current, uint256 validBefore);
@@ -155,9 +222,7 @@ error DelegationExpired(uint256 current, uint256 validBefore);
 /// @title SingleTxCapEnforcer
 /// @notice Caps maximum ETH value per transaction
 
-struct SingleTxCapTerms {
-    uint256 maxValue;
-}
+// Terms encoding: abi.encode(uint256 maxValue)
 
 error SingleTxCapExceeded(uint256 value, uint256 cap);
 ```
@@ -168,16 +233,15 @@ error SingleTxCapExceeded(uint256 value, uint256 cap);
 /// @title CooldownEnforcer
 /// @notice Enforces minimum time between large transactions
 
-struct CooldownTerms {
-    uint256 cooldownPeriod;
-    uint256 valueThreshold;
-}
+// Terms encoding: abi.encode(uint256 cooldownPeriod, uint256 valueThreshold)
+//   - cooldownPeriod: Minimum seconds between qualifying transactions
+//   - valueThreshold: Only transactions with value >= threshold trigger cooldown
 
-// ──── View Functions ────
+// ──── Storage ────
 
-function getLastLargeTx(bytes32 delegationHash) external view returns (uint256 timestamp);
+mapping(bytes32 => uint256) public lastExecution;
 
-error CooldownNotElapsed(uint256 timeRemaining);
+error CooldownNotElapsed(uint256 nextAllowed, uint256 current);
 ```
 
 ### ReputationGateEnforcer
@@ -186,21 +250,15 @@ error CooldownNotElapsed(uint256 timeRemaining);
 /// @title ReputationGateEnforcer
 /// @notice Gates execution on real-time ERC-8004 reputation scores
 
-struct ReputationGateTerms {
-    address reputationOracle;
-    uint256 minimumScore;
-    address agentRegistry;
-}
-
-// ──── Events ────
-
-event ReputationCheckPassed(address indexed agent, uint256 score, uint256 required);
-event ReputationCheckFailed(address indexed agent, uint256 score, uint256 required);
+// Terms encoding: abi.encode(address reputationOracle, uint256 agentId, uint256 minScore)
+//   - reputationOracle: Address of a contract exposing getReputationScore(uint256)
+//   - agentId: The ERC-8004 identity token ID of the agent
+//   - minScore: Minimum reputation score (0-100) required for execution
 
 // ──── Errors ────
 
-error ReputationTooLow(address agent, uint256 score, uint256 required);
-error AgentNotRegistered(address agent);
+error ReputationTooLow(uint256 agentId, uint256 currentScore, uint256 requiredScore);
+error InvalidTerms();
 ```
 
 ## Identity Contracts
@@ -209,98 +267,136 @@ error AgentNotRegistered(address agent);
 
 ```solidity
 /// @title IrisAgentRegistry
-/// @notice ERC-8004 agent identity registry
+/// @notice ERC-8004 agent identity registry with lightweight NFT ownership
+
+struct AgentInfo {
+    address operator;
+    string metadataURI;
+    bool active;
+    uint256 registeredAt;
+}
 
 // ──── Functions ────
 
-function register(string calldata metadata) external returns (uint256 tokenId);
-function isRegistered(address agent) external view returns (bool);
-function getTokenId(address agent) external view returns (uint256);
-function getMetadata(address agent) external view returns (string memory);
-function updateMetadata(string calldata newMetadata) external;
+function registerAgent(string calldata metadataURI) external returns (uint256 agentId);
+function deactivateAgent(uint256 agentId) external;
+function getAgent(uint256 agentId) external view returns (AgentInfo memory);
+function isRegistered(uint256 agentId) external view returns (bool);
+function ownerOf(uint256 agentId) external view returns (address);
 
 // ──── Events ────
 
-event AgentRegistered(address indexed agent, uint256 indexed tokenId, string metadata);
-event MetadataUpdated(address indexed agent, string newMetadata);
+event AgentRegistered(uint256 indexed agentId, address indexed operator, string metadataURI);
+event AgentDeactivated(uint256 indexed agentId, address indexed operator);
 
 // ──── Errors ────
 
-error AlreadyRegistered(address agent);
-error NotRegistered(address agent);
+error AgentNotFound(uint256 agentId);
+error NotOperator(uint256 agentId, address caller);
+error AgentAlreadyInactive(uint256 agentId);
 ```
 
 ### IrisReputationOracle
 
 ```solidity
 /// @title IrisReputationOracle
-/// @notice Tracks and reports agent reputation scores
-
-struct ReputationRecord {
-    uint256 timestamp;
-    int256 scoreChange;
-    bytes action;
-    address reporter;
-}
+/// @notice Tracks agent reputation scores (0-100). Ownable for bootstrapping.
+/// @dev Positive feedback: +2 (capped at 100). Negative feedback: -5 (floored at 0). Default score: 50.
 
 // ──── Functions ────
 
-function getScore(address agent) external view returns (uint256 score);
-function reportPositive(address agent, bytes calldata action, uint256 impact) external;
-function reportNegative(address agent, bytes calldata action, uint256 impact) external;
-function getHistory(address agent) external view returns (ReputationRecord[] memory);
+function submitFeedback(uint256 agentId, bool positive) external;
+function addReviewer(uint256 agentId, address reviewer) external;
+function getReputationScore(uint256 agentId) external view returns (uint256);
+function isAllowedReviewer(uint256 agentId, address reviewer) external view returns (bool);
+function agentRegistry() external view returns (IrisAgentRegistry);
 
 // ──── Events ────
 
-event ReputationUpdated(address indexed agent, uint256 oldScore, uint256 newScore, bytes action);
+event FeedbackSubmitted(uint256 indexed agentId, address indexed reviewer, bool positive, uint256 newScore);
+event ReviewerAdded(uint256 indexed agentId, address indexed reviewer);
 
 // ──── Errors ────
 
-error AgentNotRegistered(address agent);
-error InvalidImpactValue(uint256 impact);
-error UnauthorizedReporter(address reporter);
+error NotAuthorisedReviewer(uint256 agentId, address caller);
+error NotOperatorOrOwner(uint256 agentId, address caller);
+error AgentNotRegistered(uint256 agentId);
 ```
 
 ## Tier Presets
 
-### TierOnePreset
+Tier presets are Solidity **libraries** (not deployed contracts) that return a `Caveat[]` array for building delegations.
+
+### TierOne (Supervised) -- 4 Caveats
 
 ```solidity
-/// @title TierOnePreset
-/// @notice Supervised tier delegation factory
-
-function createTierOneDelegation(
-    IDelegationManager manager,
-    address agent,
-    address[] calldata approvedContracts,
-    bytes4[] calldata allowedSelectors,
-    uint256 validUntil
-) external returns (bytes32 delegationHash);
+library TierOne {
+    function configureTierOne(
+        address spendingCapEnforcer,
+        address whitelistEnforcer,
+        address timeWindowEnforcer,
+        address reputationGateEnforcer,
+        address reputationOracle,
+        uint256 agentId,
+        uint256 dailyCap,
+        address[] memory allowedContracts,
+        uint256 validUntil,
+        uint256 minReputation
+    ) internal view returns (Caveat[] memory caveats);
+}
 ```
 
-### TierTwoPreset
+### TierTwo (Autonomous) -- 5 Caveats
 
 ```solidity
-/// @title TierTwoPreset
-/// @notice Autonomous tier delegation factory
-
-function createTierTwoDelegation(
-    IDelegationManager manager,
-    address agent,
-    bytes4[] calldata allowedSelectors
-) external returns (bytes32 delegationHash);
+library TierTwo {
+    function configureTierTwo(
+        address spendingCapEnforcer,
+        address whitelistEnforcer,
+        address timeWindowEnforcer,
+        address reputationGateEnforcer,
+        address singleTxCapEnforcer,
+        address reputationOracle,
+        uint256 agentId,
+        uint256 dailyCap,
+        uint256 maxTxValue,
+        address[] memory allowedContracts,
+        uint256 validUntil,
+        uint256 minReputation
+    ) internal view returns (Caveat[] memory caveats);
+}
 ```
 
-### TierThreePreset
+### TierThree (Full Delegation) -- 6 Caveats
 
 ```solidity
-/// @title TierThreePreset
-/// @notice Full delegation tier factory
+library TierThree {
+    struct Enforcers {
+        address spendingCapEnforcer;
+        address whitelistEnforcer;
+        address timeWindowEnforcer;
+        address reputationGateEnforcer;
+        address singleTxCapEnforcer;
+        address cooldownEnforcer;
+    }
 
-function createTierThreeDelegation(
-    IDelegationManager manager,
-    address agent
-) external returns (bytes32 delegationHash);
+    struct Params {
+        address reputationOracle;
+        uint256 agentId;
+        uint256 weeklyCap;
+        uint256 maxTxValue;
+        address[] allowedContracts;
+        uint256 validUntil;
+        uint256 minReputation;
+        uint256 cooldownPeriod;
+        uint256 cooldownThreshold;
+    }
+
+    function configureTierThree(
+        Enforcers memory enforcers,
+        Params memory params
+    ) internal view returns (Caveat[] memory caveats);
+}
 ```
 
 ## Type Reference
@@ -310,19 +406,26 @@ function createTierThreeDelegation(
 struct Delegation {
     address delegator;       // The account granting the delegation
     address delegate;        // The agent receiving the delegation
-    bytes32 authority;       // Parent delegation hash (for chained delegations)
+    address authority;       // Parent delegation hash (address(0) for root)
     Caveat[] caveats;        // Array of caveat enforcers with terms
     uint256 salt;            // Unique salt for delegation hash
-    bytes signature;         // EIP-712 signature from the delegator
+    bytes signature;         // EIP-712 signature from the delegator's owner
 }
 
 /// @notice A caveat attached to a delegation
 struct Caveat {
     address enforcer;        // The caveat enforcer contract address
-    bytes terms;             // Encoded enforcer-specific configuration
+    bytes terms;             // ABI-encoded enforcer-specific configuration
 }
 
-/// @notice Packed UserOperation per ERC-4337
+/// @notice An action to execute via delegation
+struct Action {
+    address target;          // Target contract address
+    uint256 value;           // ETH value to send
+    bytes callData;          // Calldata to execute
+}
+
+/// @notice Packed UserOperation per ERC-4337 v0.7
 struct PackedUserOperation {
     address sender;
     uint256 nonce;

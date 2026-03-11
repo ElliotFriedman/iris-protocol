@@ -12,23 +12,29 @@ All enforcers implement the `ICaveatEnforcer` interface:
 ```solidity
 interface ICaveatEnforcer {
     /// @notice Called before delegated execution
-    /// @param terms Enforcer-specific configuration (encoded)
-    /// @param args Execution-specific arguments
-    /// @param delegation The delegation being redeemed
     function beforeHook(
-        bytes calldata terms,
-        bytes calldata args,
-        Delegation calldata delegation
+        bytes calldata terms,       // Enforcer-specific configuration
+        bytes calldata args,        // Runtime arguments from redeemer
+        address delegationManager,  // The DelegationManager calling this
+        bytes32 delegationHash,     // Hash of the delegation being redeemed
+        address delegator,          // The account that created the delegation
+        address redeemer,           // The agent redeeming the delegation
+        address target,             // Target contract of the execution
+        uint256 value,              // ETH value of the execution
+        bytes calldata callData     // Calldata of the execution
     ) external;
 
     /// @notice Called after delegated execution
-    /// @param terms Enforcer-specific configuration (encoded)
-    /// @param args Execution-specific arguments
-    /// @param delegation The delegation being redeemed
     function afterHook(
         bytes calldata terms,
         bytes calldata args,
-        Delegation calldata delegation
+        address delegationManager,
+        bytes32 delegationHash,
+        address delegator,
+        address redeemer,
+        address target,
+        uint256 value,
+        bytes calldata callData
     ) external;
 }
 ```
@@ -37,31 +43,30 @@ interface ICaveatEnforcer {
 
 ## SpendingCapEnforcer
 
-Enforces cumulative spending limits over a configurable time period (daily, weekly, or monthly).
+Enforces cumulative spending limits over a configurable rolling period (daily, weekly, or custom).
 
-### Parameters
+### Terms Encoding
 
 ```solidity
-struct SpendingCapTerms {
-    uint256 cap;        // Maximum spend in wei
-    uint256 period;     // Period in seconds (86400 = daily)
-}
+// abi.encode(uint256 allowance, uint256 period)
+//   allowance: Maximum spend in wei per period
+//   period: Period length in seconds (86400 = daily)
+bytes memory terms = abi.encode(uint256(100 ether), uint256(86400));
 ```
 
 ### Behavior
 
-- Tracks cumulative spend per delegation per period
-- Resets at the start of each new period
-- Reverts with `SpendingCapExceeded` if the transaction would exceed the cap
+- Tracks cumulative spend per delegation per period via `periodSpend[delegationHash][periodIndex]`
+- Period index is calculated as `block.timestamp / period`
+- `beforeHook` checks spend would not exceed allowance (view, no state change)
+- `afterHook` records the spend for the current period — **only callable by the authorized DelegationManager** (`msg.sender` check prevents external state manipulation)
+- Initialized with `delegationManager` address in constructor
 
 ### Example
 
 ```solidity
-// Configure: $100/day spending limit
-bytes memory terms = abi.encode(SpendingCapTerms({
-    cap: 100e18,    // 100 USDC (18 decimals)
-    period: 86400   // 1 day
-}));
+// Configure: 100 ETH/day spending limit
+bytes memory terms = abi.encode(uint256(100 ether), uint256(86400));
 ```
 
 ### Error Cases
@@ -76,30 +81,20 @@ bytes memory terms = abi.encode(SpendingCapTerms({
 
 Restricts delegated calls to a set of approved target contract addresses.
 
-### Parameters
+### Terms Encoding
 
 ```solidity
-struct WhitelistTerms {
-    address[] allowedContracts; // Approved target addresses
-}
+// abi.encode(address[] allowedContracts)
+address[] memory allowed = new address[](2);
+allowed[0] = UNISWAP_ROUTER;
+allowed[1] = AAVE_POOL;
+bytes memory terms = abi.encode(allowed);
 ```
 
 ### Behavior
 
 - Checks that `target` is in the allowed list
 - Reverts if the agent attempts to call a non-whitelisted contract
-
-### Example
-
-```solidity
-// Configure: only allow Uniswap and Aave
-address[] memory allowed = new address[](2);
-allowed[0] = UNISWAP_ROUTER;
-allowed[1] = AAVE_POOL;
-bytes memory terms = abi.encode(WhitelistTerms({
-    allowedContracts: allowed
-}));
-```
 
 ### Error Cases
 
@@ -113,36 +108,27 @@ bytes memory terms = abi.encode(WhitelistTerms({
 
 Restricts delegated calls to a set of approved function selectors.
 
-### Parameters
+### Terms Encoding
 
 ```solidity
-struct SelectorTerms {
-    bytes4[] allowedSelectors; // Approved function selectors
-}
+// abi.encode(bytes4[] allowedSelectors)
+bytes4[] memory selectors = new bytes4[](2);
+selectors[0] = ISwapRouter.swap.selector;
+selectors[1] = IERC20.transfer.selector;
+bytes memory terms = abi.encode(selectors);
 ```
 
 ### Behavior
 
+- Rejects calldata shorter than 4 bytes with `CalldataTooShort()`
 - Extracts the first 4 bytes of calldata to determine the function selector
 - Checks that the selector is in the allowed list
-- Reverts if the agent attempts to call a non-whitelisted function
-
-### Example
-
-```solidity
-// Configure: only allow swap() and transfer()
-bytes4[] memory selectors = new bytes4[](2);
-selectors[0] = ISwapRouter.swap.selector;
-selectors[1] = IERC20.transfer.selector;
-bytes memory terms = abi.encode(SelectorTerms({
-    allowedSelectors: selectors
-}));
-```
 
 ### Error Cases
 
 | Error | Condition |
 |-------|-----------|
+| `CalldataTooShort()` | Calldata is fewer than 4 bytes (no valid function selector) |
 | `SelectorNotAllowed(bytes4 selector)` | Function selector is not in the approved list |
 
 ---
@@ -151,30 +137,17 @@ bytes memory terms = abi.encode(SelectorTerms({
 
 Limits delegation validity to a specific time range.
 
-### Parameters
+### Terms Encoding
 
 ```solidity
-struct TimeWindowTerms {
-    uint256 validAfter;  // Unix timestamp: delegation valid after this time
-    uint256 validBefore; // Unix timestamp: delegation valid before this time
-}
+// abi.encode(uint256 notBefore, uint256 notAfter)
+bytes memory terms = abi.encode(block.timestamp, block.timestamp + 7 days);
 ```
 
 ### Behavior
 
 - Checks `block.timestamp` against the configured window
 - Reverts if the current time is outside the valid range
-- Useful for time-limited delegations or active-hours-only configurations
-
-### Example
-
-```solidity
-// Configure: valid for the next 24 hours
-bytes memory terms = abi.encode(TimeWindowTerms({
-    validAfter: block.timestamp,
-    validBefore: block.timestamp + 86400
-}));
-```
 
 ### Error Cases
 
@@ -189,12 +162,11 @@ bytes memory terms = abi.encode(TimeWindowTerms({
 
 Caps the maximum ETH value per individual transaction.
 
-### Parameters
+### Terms Encoding
 
 ```solidity
-struct SingleTxCapTerms {
-    uint256 maxValue; // Maximum ETH value in wei per transaction
-}
+// abi.encode(uint256 maxValue)
+bytes memory terms = abi.encode(uint256(10 ether));
 ```
 
 ### Behavior
@@ -202,15 +174,6 @@ struct SingleTxCapTerms {
 - Checks the `value` field of the delegated call
 - Reverts if the value exceeds the configured cap
 - Unlike SpendingCapEnforcer, this does not track cumulative spend
-
-### Example
-
-```solidity
-// Configure: max $50 per transaction
-bytes memory terms = abi.encode(SingleTxCapTerms({
-    maxValue: 50e18
-}));
-```
 
 ### Error Cases
 
@@ -224,79 +187,64 @@ bytes memory terms = abi.encode(SingleTxCapTerms({
 
 Enforces a minimum time interval between transactions that exceed a value threshold.
 
-### Parameters
+### Terms Encoding
 
 ```solidity
-struct CooldownTerms {
-    uint256 cooldownPeriod;   // Minimum seconds between qualifying transactions
-    uint256 valueThreshold;   // Transactions above this value trigger the cooldown
-}
+// abi.encode(uint256 cooldownPeriod, uint256 valueThreshold)
+bytes memory terms = abi.encode(uint256(1 hours), uint256(10 ether));
 ```
 
 ### Behavior
 
-- Tracks the timestamp of the last qualifying transaction per delegation
-- If the new transaction's value exceeds `valueThreshold`, checks that `cooldownPeriod` has elapsed since the last qualifying transaction
-- Transactions below the threshold are not subject to cooldown
-
-### Example
-
-```solidity
-// Configure: 5-minute cooldown between transactions over $200
-bytes memory terms = abi.encode(CooldownTerms({
-    cooldownPeriod: 300,        // 5 minutes
-    valueThreshold: 200e18      // $200
-}));
-```
+- Tracks the timestamp of the last qualifying transaction per delegation via `lastExecution[delegationHash]`
+- If the new transaction's value >= `valueThreshold`, checks that `cooldownPeriod` has elapsed
+- Transactions below the threshold are not subject to cooldown and bypass the check
+- `afterHook` records `lastExecution[delegationHash] = block.timestamp` if value meets threshold — **only callable by the authorized DelegationManager**
+- Initialized with `delegationManager` address in constructor
 
 ### Error Cases
 
 | Error | Condition |
 |-------|-----------|
-| `CooldownNotElapsed(uint256 timeRemaining)` | Not enough time has passed since the last large transaction |
+| `CooldownNotElapsed(uint256 nextAllowed, uint256 current)` | Not enough time has passed since the last large transaction |
 
 ---
 
 ## ReputationGateEnforcer
 
-**This is the novel contribution of Iris Protocol.** The ReputationGateEnforcer queries an agent's ERC-8004 reputation score in real-time and blocks execution if the score falls below a configurable threshold.
+The ReputationGateEnforcer queries an agent's ERC-8004 reputation score in real-time and blocks execution if the score falls below a configurable threshold.
 
 This enforcer enables **dynamic permission degradation**: an agent that misbehaves loses access not just to one user's wallet, but to all delegations across the network that require a minimum reputation score.
 
 See the [dedicated ReputationGateEnforcer page](./reputation-gate.md) for a deep dive.
 
-### Parameters
+### Terms Encoding
 
 ```solidity
-struct ReputationGateTerms {
-    address reputationOracle;  // Address of the IrisReputationOracle
-    uint256 minimumScore;      // Minimum reputation score (0-100)
-    address agentRegistry;     // Address of the IrisAgentRegistry (ERC-8004)
-}
+// abi.encode(address reputationOracle, uint256 agentId, uint256 minScore)
+//   reputationOracle: Contract exposing getReputationScore(uint256)
+//   agentId: The agent's ERC-8004 identity token ID
+//   minScore: Minimum reputation score (0-100) required
+bytes memory terms = abi.encode(
+    address(reputationOracle),
+    agentId,
+    uint256(70)
+);
 ```
 
 ### Behavior
 
-1. Extracts the agent's address from the delegation
-2. Queries `IrisReputationOracle.getScore(agentAddress)` onchain
-3. Compares the live score against `minimumScore`
+1. Decodes the oracle address, agentId, and minimum score from `terms`
+2. Queries `getReputationScore(uint256 agentId)` via staticcall
+3. Compares the live score against `minScore`
 4. Reverts if the score is below the threshold
-5. Score is checked on **every execution**, not just at delegation creation
-
-### Example
-
-```solidity
-// Configure: require minimum reputation score of 70
-bytes memory terms = abi.encode(ReputationGateTerms({
-    reputationOracle: IRIS_REPUTATION_ORACLE,
-    minimumScore: 70,
-    agentRegistry: IRIS_AGENT_REGISTRY
-}));
-```
+5. Returns successfully if the score meets the threshold
+6. Score is checked on **every execution**, not just at delegation creation
+7. Stateless -- no storage, single instance serves all delegations
 
 ### Error Cases
 
 | Error | Condition |
 |-------|-----------|
-| `ReputationTooLow(address agent, uint256 score, uint256 required)` | Agent's reputation score is below the minimum threshold |
-| `AgentNotRegistered(address agent)` | Agent does not have an ERC-8004 identity |
+| `ReputationTooLow(uint256 agentId, uint256 currentScore, uint256 requiredScore)` | Agent's reputation score is below the minimum threshold |
+| `InvalidTerms()` | Terms cannot be decoded or oracle address is zero |

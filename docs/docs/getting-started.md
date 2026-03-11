@@ -5,7 +5,7 @@ title: Getting Started
 
 # Getting Started
 
-Get Iris Protocol running locally in under five minutes.
+Iris Protocol runs locally in under five minutes with Foundry and Node.js.
 
 ## Prerequisites
 
@@ -13,6 +13,7 @@ Get Iris Protocol running locally in under five minutes.
 |------|---------|---------|
 | Foundry | Latest | `curl -L https://foundry.paradigm.xyz \| bash && foundryup` |
 | Node.js | 18+ | [nodejs.org](https://nodejs.org) |
+| pnpm | 8+ | `npm install -g pnpm` |
 | Git | Any | Pre-installed on most systems |
 
 ## Quick Start
@@ -22,36 +23,29 @@ Get Iris Protocol running locally in under five minutes.
 git clone https://github.com/iris-protocol/iris-protocol.git
 cd iris-protocol
 
-# Install Foundry dependencies
-forge install
-
-# Build contracts
-forge build
-
-# Run tests
-forge test
+# Build and test contracts
+cd contracts
+forge install && forge build && forge test
 
 # Run tests with verbosity
 forge test -vvv
 ```
 
-## Deploy to Local Fork
+## Deploy to Local Anvil
 
 ```bash
-# Start a local fork of Base Sepolia
-anvil --fork-url $BASE_SEPOLIA_RPC_URL
+# Start a local Anvil node
+anvil &
 
-# In a new terminal, deploy all contracts
-forge script script/Deploy.s.sol \
-    --rpc-url http://localhost:8545 \
-    --broadcast \
-    --private-key $DEPLOYER_PRIVATE_KEY
+# Deploy all contracts
+forge script script/DeployLocal.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
 ```
 
 ## Deploy to Base Sepolia
 
 ```bash
 # Deploy to Base Sepolia testnet
+cd contracts
 forge script script/Deploy.s.sol \
     --rpc-url $BASE_SEPOLIA_RPC_URL \
     --broadcast \
@@ -60,55 +54,72 @@ forge script script/Deploy.s.sol \
     --etherscan-api-key $BASESCAN_API_KEY
 ```
 
-## Launch Demo App
+## Run E2E Tests
 
 ```bash
-# Install demo dependencies
-cd demo && npm install
-
-# Configure environment
-cp .env.example .env
-# Edit .env with your deployed contract addresses and RPC URL
-
-# Start the demo
-npm run dev
+# From the project root
+cd e2e
+./run.sh
+# Starts Anvil, deploys contracts, runs 18 E2E tests via vitest
 ```
 
-The demo app will be available at `http://localhost:3000`.
+## Run Frontend Apps
+
+```bash
+# Landing page
+cd apps/landing
+pnpm install && pnpm dev
+
+# Dashboard
+cd apps/dashboard
+pnpm install && pnpm dev
+```
 
 ## Project Structure
 
 ```
 iris-protocol/
-├── src/                          # Solidity contracts
-│   ├── IrisAccount.sol           # ERC-4337 smart contract wallet
-│   ├── IrisAccountFactory.sol    # Deterministic account factory
-│   ├── DelegationManager.sol     # ERC-7710 delegation orchestrator
-│   ├── enforcers/                # Caveat enforcer contracts
-│   │   ├── SpendingCapEnforcer.sol
-│   │   ├── ContractWhitelistEnforcer.sol
-│   │   ├── FunctionSelectorEnforcer.sol
-│   │   ├── TimeWindowEnforcer.sol
-│   │   ├── ReputationGateEnforcer.sol
-│   │   ├── SingleTxCapEnforcer.sol
-│   │   └── CooldownEnforcer.sol
-│   ├── identity/                 # ERC-8004 identity contracts
-│   │   ├── IrisAgentRegistry.sol
-│   │   └── IrisReputationOracle.sol
-│   └── presets/                  # Trust tier presets
-│       ├── TierOnePreset.sol
-│       ├── TierTwoPreset.sol
-│       └── TierThreePreset.sol
-├── test/                         # Foundry tests
-├── script/                       # Deployment scripts
-├── demo/                         # Demo application
-├── docs/                         # This documentation site
-└── foundry.toml                  # Foundry configuration
+├── contracts/                    # Foundry project
+│   ├── src/
+│   │   ├── IrisAccount.sol               # ERC-4337 smart account
+│   │   ├── IrisAccountFactory.sol        # CREATE2 factory
+│   │   ├── IrisDelegationManager.sol     # ERC-7710 delegation lifecycle
+│   │   ├── IrisApprovalQueue.sol         # Approval queue for over-limit txs
+│   │   ├── caveats/                      # 7 caveat enforcers
+│   │   │   ├── SpendingCapEnforcer.sol
+│   │   │   ├── ContractWhitelistEnforcer.sol
+│   │   │   ├── FunctionSelectorEnforcer.sol
+│   │   │   ├── TimeWindowEnforcer.sol
+│   │   │   ├── SingleTxCapEnforcer.sol
+│   │   │   ├── CooldownEnforcer.sol
+│   │   │   └── ReputationGateEnforcer.sol
+│   │   ├── identity/
+│   │   │   ├── IrisAgentRegistry.sol     # ERC-8004 identity
+│   │   │   └── IrisReputationOracle.sol  # Reputation scores
+│   │   ├── presets/
+│   │   │   ├── TierOne.sol               # Supervised (4 caveats)
+│   │   │   ├── TierTwo.sol               # Autonomous (5 caveats)
+│   │   │   └── TierThree.sol             # Full delegation (6 caveats)
+│   │   └── deployers/
+│   │       └── IrisDeployer.sol          # Shared deployment fixture
+│   ├── test/
+│   │   ├── integration/                  # Integration test suites
+│   │   └── helpers/
+│   │       └── IrisTestBase.sol          # Shared test base
+│   └── script/
+│       ├── Deploy.s.sol                  # Production deploy
+│       ├── DeployLocal.s.sol             # Local Anvil deploy
+│       └── Demo.s.sol                    # Demo script
+├── apps/
+│   ├── landing/                          # Next.js landing page
+│   └── dashboard/                        # Next.js dashboard
+├── e2e/                                  # E2E tests (viem + vitest + Anvil)
+└── docs/                                 # Docusaurus documentation
 ```
 
 ## Environment Variables
 
-Create a `.env` file in the project root:
+Create a `.env` file in the `contracts/` directory:
 
 ```bash
 # RPC
@@ -119,8 +130,11 @@ DEPLOYER_PRIVATE_KEY=0x...
 
 # Verification
 BASESCAN_API_KEY=...
+```
 
-# Demo App
+For frontend apps, create `.env.local` in each app directory:
+
+```bash
 NEXT_PUBLIC_RPC_URL=https://sepolia.base.org
 NEXT_PUBLIC_CHAIN_ID=84532
 ```

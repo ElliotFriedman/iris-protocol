@@ -12,11 +12,11 @@ Iris Protocol is composed of four layers: accounts, delegations, enforcement, an
 ```mermaid
 graph TB
     User["User (EOA)"] -->|creates| IA["IrisAccount (ERC-4337)"]
-    Agent["AI Agent"] -->|requests delegation| DM["DelegationManager (ERC-7710)"]
-    DM -->|validates| CE["Caveat Enforcers"]
-    CE -->|checks reputation| REG["ERC-8004 Registry"]
+    Agent["AI Agent"] -->|redeems delegation| DM["IrisDelegationManager (ERC-7710)"]
+    DM -->|validates & enforces| CE["Caveat Enforcers"]
+    CE -->|checks reputation| IRO["IrisReputationOracle"]
     IA -->|executes via| DM
-    DM -->|enforces caveats| IA
+    DM -->|calls execute on| IA
 
     subgraph Enforcement Layer
         CE
@@ -38,38 +38,43 @@ graph TB
     CE --> CDE
 
     subgraph Identity Layer
-        REG
         IAR["IrisAgentRegistry"]
         IRO["IrisReputationOracle"]
     end
 
-    REG --> IAR
-    REG --> IRO
+    RGE --> IRO
+    IRO --> IAR
 ```
 
 ## Component Architecture
 
 ### Layer 1: Account (ERC-4337)
 
-**IrisAccount** is an ERC-4337 smart contract account. It serves as the agent's wallet and the user's vault simultaneously. The account validates UserOperations, supports batch execution, and implements the delegation interface.
+**IrisAccount** is an ERC-4337 smart contract account implementing IERC7710Delegator. It serves as the agent's wallet and the user's vault simultaneously. The account validates UserOperations, supports batch execution, and implements the delegation interface.
 
 Key properties:
 - Owned by the user's EOA
-- Delegates specific permissions to agent addresses
-- All state changes go through the EntryPoint
+- Delegates execution to the authorized IrisDelegationManager
+- Deterministic deployment via IrisAccountFactory (CREATE2)
 - Supports EIP-7702 upgrade path for EOAs
 
 ### Layer 2: Delegation (ERC-7710)
 
-**DelegationManager** is the core orchestrator. When a user grants an agent a trust tier, the manager creates a delegation with an attached bundle of caveat enforcers. When the agent submits a transaction, the manager redeems the delegation, runs every enforcer, and either executes or reverts.
+**IrisDelegationManager** is the core orchestrator. Users sign delegations offchain with EIP-712. When an agent submits a transaction, the manager validates the delegation chain, verifies signatures, runs every caveat enforcer, and either executes or reverts.
 
 Delegation lifecycle:
-1. **Create** -- User selects a trust tier; manager bundles the corresponding caveats
-2. **Sign** -- User signs the delegation offchain (EIP-712)
-3. **Store** -- Delegation stored onchain or offchain depending on configuration
-4. **Redeem** -- Agent submits a transaction referencing the delegation
-5. **Enforce** -- Each caveat enforcer runs its validation logic
-6. **Execute** -- If all caveats pass, the transaction executes on the IrisAccount
+1. **Build** -- User selects a trust tier; preset library constructs the caveat array
+2. **Sign** -- User signs the delegation offchain (EIP-712 typed data)
+3. **Redeem** -- Agent submits a transaction referencing the delegation chain
+4. **Enforce** -- Each caveat enforcer on **every delegation in the chain** runs its `beforeHook` validation (not just the leaf)
+5. **Execute** -- If all caveats pass, the DelegationManager calls `execute()` on the IrisAccount
+6. **Record** -- Each caveat enforcer runs its `afterHook` in reverse order (for state tracking like spend recording)
+
+Security properties:
+- **Reentrancy protection**: `redeemDelegation` is protected by OpenZeppelin's `ReentrancyGuard`
+- **Full chain enforcement**: Caveats are enforced on ALL delegations in a chain, preventing bypass via intermediate delegations
+- **Stateful enforcer protection**: `SpendingCapEnforcer` and `CooldownEnforcer` verify `msg.sender` is the authorized DelegationManager before mutating state
+- **Authorized revocation**: `revokeDelegation` requires the full delegation struct and verifies the caller is the delegator or delegator's owner
 
 ```mermaid
 sequenceDiagram
@@ -79,19 +84,19 @@ sequenceDiagram
     participant CaveatEnforcers
     participant IrisAccount
 
-    User->>DelegationManager: createDelegation(agent, tier, caveats)
-    User->>DelegationManager: signDelegation(delegationHash)
-    Agent->>DelegationManager: redeemDelegation(delegation, calldata)
-    DelegationManager->>CaveatEnforcers: beforeHook(terms, args)
+    User->>User: Sign delegation (EIP-712)
+    Agent->>DelegationManager: redeemDelegation(chain, action)
+    DelegationManager->>DelegationManager: Validate chain + signatures
+    DelegationManager->>CaveatEnforcers: beforeHook(terms, ..., target, value, callData)
     CaveatEnforcers-->>DelegationManager: pass / revert
-    DelegationManager->>IrisAccount: execute(target, value, calldata)
-    IrisAccount-->>Agent: result
-    DelegationManager->>CaveatEnforcers: afterHook(terms, args)
+    DelegationManager->>IrisAccount: execute(target, value, callData)
+    IrisAccount-->>DelegationManager: result
+    DelegationManager->>CaveatEnforcers: afterHook(terms, ..., target, value, callData)
 ```
 
 ### Layer 3: Enforcement (Caveat Enforcers)
 
-Each caveat enforcer is an independent contract implementing a single validation rule. Enforcers run before and after execution, enabling both pre-checks (spending limits, reputation gates) and post-checks (state validations).
+Each caveat enforcer is an independent contract implementing a single validation rule. Enforcers run before and after execution, enabling both pre-checks (spending limits, reputation gates) and post-checks (state recording like cumulative spend).
 
 Enforcers are composable: a trust tier bundles multiple enforcers together. The delegation only succeeds if every enforcer passes.
 
@@ -99,7 +104,7 @@ See [Caveat Enforcers](./contracts/caveat-enforcers.md) for the full catalog.
 
 ### Layer 4: Identity (ERC-8004)
 
-**ERC-8004** provides agent identity and reputation. Each agent mints an identity NFT, and the reputation oracle tracks their onchain behavior. The **ReputationGateEnforcer** queries this registry in real-time, blocking agents whose reputation drops below the required threshold.
+**ERC-8004** provides agent identity and reputation. Each agent calls `registerAgent()` to get an agentId and identity NFT. The IrisReputationOracle tracks reputation scores (0-100) per agentId. The **ReputationGateEnforcer** queries this oracle in real-time, blocking agents whose reputation drops below the required threshold.
 
 See [Identity & Reputation](./identity.md) for details.
 
@@ -107,30 +112,37 @@ See [Identity & Reputation](./identity.md) for details.
 
 ### Tier 0: View Only
 ```
-Agent → reads public state only → no delegation needed
+Agent -- reads public state only -- no delegation needed
 ```
 
-### Tier 1: Supervised
+### Tier 1: Supervised (4 caveats)
 ```
-Agent → redeemDelegation → SpendingCapEnforcer(100/day)
-                         → ContractWhitelistEnforcer(approved_list)
-                         → ReputationGateEnforcer(min_score=50)
-                         → execute (if all pass)
-```
-
-### Tier 2: Autonomous
-```
-Agent → redeemDelegation → SpendingCapEnforcer(1000/day)
-                         → FunctionSelectorEnforcer(swap, transfer)
-                         → CooldownEnforcer(5min between large txs)
-                         → ReputationGateEnforcer(min_score=70)
-                         → execute (if all pass)
+Agent -- redeemDelegation -- SpendingCapEnforcer (daily cap)
+                           -- ContractWhitelistEnforcer (approved targets)
+                           -- TimeWindowEnforcer (valid window)
+                           -- ReputationGateEnforcer (min score)
+                           -- execute (if all pass)
 ```
 
-### Tier 3: Full Delegation
+### Tier 2: Autonomous (5 caveats)
 ```
-Agent → redeemDelegation → ReputationGateEnforcer(min_score=90)
-                         → execute (if reputation check passes)
+Agent -- redeemDelegation -- SpendingCapEnforcer (daily cap)
+                           -- ContractWhitelistEnforcer (approved targets)
+                           -- TimeWindowEnforcer (valid window)
+                           -- ReputationGateEnforcer (min score)
+                           -- SingleTxCapEnforcer (per-tx cap)
+                           -- execute (if all pass)
+```
+
+### Tier 3: Full Delegation (6 caveats)
+```
+Agent -- redeemDelegation -- SpendingCapEnforcer (weekly cap)
+                           -- ContractWhitelistEnforcer (approved targets)
+                           -- TimeWindowEnforcer (valid window)
+                           -- ReputationGateEnforcer (min score)
+                           -- SingleTxCapEnforcer (per-tx cap)
+                           -- CooldownEnforcer (delay between large txs)
+                           -- execute (if all pass)
 ```
 
 ## Design Principles
@@ -140,3 +152,4 @@ Agent → redeemDelegation → ReputationGateEnforcer(min_score=90)
 3. **Dynamic reputation** -- Agent permissions degrade in real-time based on onchain behavior, not static configurations.
 4. **Instant revocation** -- Users can revoke all delegations in a single transaction.
 5. **Standard compliance** -- Every component maps to an existing or emerging ERC standard.
+6. **Shared deployment fixture** -- `IrisDeployer.sol` is used by both deploy scripts and integration tests, guaranteeing tests exercise the exact same deployment path as production.
