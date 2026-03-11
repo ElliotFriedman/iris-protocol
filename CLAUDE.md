@@ -33,6 +33,9 @@ Use `/frontend-test` to screenshot and interact with the frontend using Playwrig
   - `contracts/lib/` — Git submodules (forge-std, openzeppelin, delegation-framework)
 - `apps/dashboard/` — Next.js dashboard app (`@iris-protocol/dashboard`)
 - `apps/landing/` — Next.js landing page (`@iris-protocol/landing`)
+- `e2e/` — E2E test harness (TypeScript + viem + vitest against local Anvil)
+  - Run with `./e2e/run.sh` or `pnpm test:e2e`
+  - Starts Anvil, deploys contracts, runs 18 E2E tests
 - `docs/` — Docusaurus documentation (independent dep tree)
 
 ## Conventions
