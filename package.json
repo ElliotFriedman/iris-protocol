@@ -6,6 +6,7 @@
     "test:contracts": "cd contracts && forge test -vvv",
     "dev:app": "pnpm --filter @iris-protocol/dashboard dev",
     "dev:landing": "pnpm --filter @iris-protocol/landing dev",
-    "dev:docs": "cd docs && pnpm start"
+    "dev:docs": "cd docs && pnpm start",
+    "test:e2e": "cd e2e && ./run.sh"
   }
 }
