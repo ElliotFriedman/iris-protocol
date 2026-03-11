@@ -69,14 +69,15 @@ function HomepageHeader() {
         </p>
         <div className={styles.buttons}>
           <Link
-            className="button button--secondary button--lg"
-            to="/docs/intro">
+            className="button button--lg"
+            to="/docs/intro"
+            style={{backgroundColor: '#0D0D14', color: '#00F0FF', border: '1px solid #00F0FF'}}>
             Read the Docs
           </Link>
           <Link
-            className="button button--secondary button--lg"
+            className="button button--lg"
             to="/docs/demo-guide"
-            style={{marginLeft: '1rem'}}>
+            style={{marginLeft: '1rem', backgroundColor: 'transparent', color: '#E8E6E1', border: '1px solid #8A8A9A'}}>
             Demo Guide
           </Link>
         </div>
