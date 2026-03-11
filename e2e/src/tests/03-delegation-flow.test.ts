@@ -223,12 +223,12 @@ describe("Delegation flow (EIP-712)", () => {
       args: [signedDelegation],
     });
 
-    // Revoke (anyone can call revokeDelegation on the manager — it just sets the flag)
+    // Revoke (only delegator or owner can call revokeDelegation)
     const revokeHash = await ownerWallet.writeContract({
       address: manifest.contracts.IrisDelegationManager,
       abi: IrisDelegationManagerABI,
       functionName: "revokeDelegation",
-      args: [delegationHash],
+      args: [signedDelegation],
     });
     await client.waitForTransactionReceipt({ hash: revokeHash });
 

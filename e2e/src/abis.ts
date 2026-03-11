@@ -67,7 +67,27 @@ export const IrisDelegationManagerABI = [
   {
     type: "function",
     name: "revokeDelegation",
-    inputs: [{ name: "delegationHash", type: "bytes32" }],
+    inputs: [
+      {
+        name: "delegation",
+        type: "tuple",
+        components: [
+          { name: "delegator", type: "address" },
+          { name: "delegate", type: "address" },
+          { name: "authority", type: "address" },
+          {
+            name: "caveats",
+            type: "tuple[]",
+            components: [
+              { name: "enforcer", type: "address" },
+              { name: "terms", type: "bytes" },
+            ],
+          },
+          { name: "salt", type: "uint256" },
+          { name: "signature", type: "bytes" },
+        ],
+      },
+    ],
     outputs: [],
     stateMutability: "nonpayable",
   },
@@ -266,5 +286,72 @@ export const MockERC20ABI = [
     ],
     outputs: [{ name: "", type: "bool" }],
     stateMutability: "nonpayable",
+  },
+] as const;
+
+export const IrisApprovalQueueABI = [
+  {
+    type: "function",
+    name: "submitRequest",
+    inputs: [
+      { name: "target", type: "address" },
+      { name: "callData", type: "bytes" },
+      { name: "value", type: "uint256" },
+      { name: "delegationHash", type: "bytes32" },
+      { name: "delegator", type: "address" },
+    ],
+    outputs: [{ name: "requestId", type: "bytes32" }],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "approveRequest",
+    inputs: [{ name: "requestId", type: "bytes32" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "rejectRequest",
+    inputs: [{ name: "requestId", type: "bytes32" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
+    name: "getRequest",
+    inputs: [{ name: "requestId", type: "bytes32" }],
+    outputs: [
+      {
+        name: "",
+        type: "tuple",
+        components: [
+          { name: "agent", type: "address" },
+          { name: "target", type: "address" },
+          { name: "callData", type: "bytes" },
+          { name: "value", type: "uint256" },
+          { name: "delegationHash", type: "bytes32" },
+          { name: "submittedAt", type: "uint256" },
+          { name: "approved", type: "bool" },
+          { name: "rejected", type: "bool" },
+          { name: "executed", type: "bool" },
+        ],
+      },
+    ],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "getPendingRequests",
+    inputs: [{ name: "delegator", type: "address" }],
+    outputs: [{ name: "", type: "bytes32[]" }],
+    stateMutability: "view",
+  },
+  {
+    type: "function",
+    name: "isExpired",
+    inputs: [{ name: "requestId", type: "bytes32" }],
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "view",
   },
 ] as const;

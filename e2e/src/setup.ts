@@ -59,6 +59,7 @@ export interface DeploymentManifest {
     ReputationGateEnforcer: Address;
     IrisApprovalQueue: Address;
     MockERC20: Address;
+    MockUniswapRouter: Address;
   };
   accounts: {
     deployer: Address;
