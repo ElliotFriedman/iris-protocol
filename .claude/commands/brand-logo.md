@@ -16,7 +16,7 @@ A geometric iris aperture — six overlapping blades forming a hexagonal center 
 | Mark + wordmark (horizontal) | README header, pitch deck title, nav |
 | Wordmark only | Text-only contexts, footer, code comments |
 
-**Wordmark:** "Iris" in JetBrains Mono Bold, `#7B2FBE`. "Protocol" in JetBrains Mono Regular, `#8A8A9A`. The typeset wordmark is lowercase (`iris protocol`). In all written prose, capitalize: Iris Protocol.
+**Wordmark:** "Iris" in JetBrains Mono Bold, `#7B2FBE`. "Protocol" in JetBrains Mono Regular, `#9494A6`. The typeset wordmark is lowercase (`iris protocol`). In all written prose, capitalize: Iris Protocol.
 
 ## Logo Don'ts
 

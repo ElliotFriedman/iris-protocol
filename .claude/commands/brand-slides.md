@@ -6,7 +6,7 @@ Apply when creating pitch deck or presentation slides.
 
 - **Background:** Void (`#0D0D14`), full bleed. No gradients.
 - **Title:** JetBrains Mono Bold, Bone (`#E8E6E1`), left-aligned. Max 8 words.
-- **Body:** Satoshi Medium, Ash (`#8A8A9A`), left-aligned. Max 3–4 lines.
+- **Body:** Satoshi Medium, Ash (`#9494A6`), left-aligned. Max 3–4 lines.
 - **Accent:** Thin horizontal rules (1px, Graphite). Iris purple for one key element per slide only.
 - **Grid:** 12-column, 40px margins. Content in columns 2–11.
 

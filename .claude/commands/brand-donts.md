@@ -4,7 +4,7 @@ Check all assets against this list before shipping.
 
 - **Don't use light themes.** Dark-mode only across all surfaces.
 - **Don't use gradients** on backgrounds or large surfaces. Flat, solid fills only.
-- **Don't use rounded, bubbly, or playful design elements.** No pill-shaped buttons, no cartoon icons, no bouncy animations.
+- **Don't use rounded, bubbly, or playful design elements.** No pill-shaped buttons (use 8px radius), no cartoon icons, no bouncy animations.
 - **Don't reference "web3," "blockchain technology," or "decentralized finance"** as marketing terms. Name specific standards (ERC-7710, ERC-8004) or describe the mechanism.
 - **Don't use AI-generated art or imagery.** All visuals are geometric, diagrammatic, or typographic.
 - **Don't disparage competitors.** The Privy comparison is technical and factual ("they use TEEs, we use smart contracts"), never dismissive.
@@ -18,3 +18,6 @@ Check all assets against this list before shipping.
 - **Don't use Inter** as a body font. The brand typeface for body text is Satoshi.
 - **Don't use ease-in-out animations.** Use `ease-out` or `linear` only. No bounce, spring, or elastic easing.
 - **Don't create color aliases.** Use brand names (`--obsidian`, `--onyx`) not generic names (`--charcoal`, `--charcoal-light`).
+- **Don't use negative letter-spacing on monospace.** The equal-width grid is the brand. Never apply `tracking-tight` to JetBrains Mono.
+- **Don't use Iris purple (`#7B2FBE`) as text color.** It fails WCAG contrast on all surfaces. Use Iris Light (`#A76BE0`) for text; reserve `#7B2FBE` for filled backgrounds and non-text accents.
+- **Don't rely on color alone for meaning.** Always pair with icons, labels, or shape (especially trust tier indicators and success/error states).

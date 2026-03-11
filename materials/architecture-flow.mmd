@@ -1,0 +1,52 @@
+%%{init: {'theme': 'dark'}}%%
+
+sequenceDiagram
+    participant User as 👤 Wallet Owner
+    participant IA as Iris Account
+    participant DM as Delegation Manager
+    participant CE as Caveat Enforcers
+    participant RG as ReputationGate
+    participant RO as Reputation Oracle
+    participant Agent as 🤖 AI Agent
+    participant Target as Target Contract
+
+    Note over Agent,RO: Phase 1: Agent Registration
+    Agent->>+RO: registerAgent(metadataURI)
+    RO-->>-Agent: agentId (ERC-8004 NFT)
+
+    Note over User,DM: Phase 2: Delegation Setup
+    User->>DM: Sign ERC-7710 delegation<br/>(SpendingCap + Whitelist + ReputationGate)
+    DM-->>User: delegation signature (offchain)
+
+    Note over Agent,Target: Phase 3: Delegation Redemption
+    Agent->>+DM: redeemDelegation(delegation, action)
+    DM->>+CE: beforeHook (SpendingCap)
+    CE-->>-DM: ✅ within cap
+    DM->>+CE: beforeHook (ContractWhitelist)
+    CE-->>-DM: ✅ target allowed
+    DM->>+RG: beforeHook (ReputationGate)
+    RG->>RO: getReputationScore(agentId)
+    RO-->>RG: score: 87
+    RG-->>-DM: ✅ above threshold
+    DM->>+IA: execute(target, value, calldata)
+    IA->>+Target: call(calldata)
+    Target-->>-IA: result
+    IA-->>-DM: success
+    DM->>CE: afterHook (update spending tracker)
+    DM-->>-Agent: ✅ execution complete
+
+    Note over Agent,Target: Phase 4: Blocked Execution
+    Agent->>+DM: redeemDelegation(delegation, overCapAction)
+    DM->>+CE: beforeHook (SpendingCap)
+    CE-->>-DM: ❌ cap exceeded
+    DM-->>-Agent: revert SpendingCapExceeded
+
+    Note over RO,RG: Phase 5: Reputation Degradation
+    Note right of RO: Agent gets negative feedback
+    RO->>RO: score drops to 40
+    Agent->>+DM: redeemDelegation(delegation, action)
+    DM->>+RG: beforeHook (ReputationGate)
+    RG->>RO: getReputationScore(agentId)
+    RO-->>RG: score: 40
+    RG-->>-DM: ❌ below threshold
+    DM-->>-Agent: revert ReputationTooLow

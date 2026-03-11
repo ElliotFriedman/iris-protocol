@@ -1,0 +1,92 @@
+%%{init: {'theme': 'dark', 'themeVariables': {'primaryColor': '#7B2FBE', 'primaryTextColor': '#FFFFFF', 'primaryBorderColor': '#00F0FF', 'lineColor': '#00F0FF', 'secondaryColor': '#1A1A2E', 'tertiaryColor': '#1A1A2E', 'background': '#1A1A2E'}}}%%
+
+graph TB
+    subgraph User["👤 Wallet Owner"]
+        EOA[EOA / MetaMask]
+    end
+
+    subgraph IrisWallet["Iris Smart Account (ERC-4337)"]
+        IA[IrisAccount]
+        IAF[IrisAccountFactory]
+    end
+
+    subgraph DelegationLayer["Delegation Layer (ERC-7710)"]
+        DM[IrisDelegationManager]
+        AQ[IrisApprovalQueue]
+    end
+
+    subgraph CaveatEnforcers["Caveat Enforcers"]
+        SC[SpendingCap]
+        CW[ContractWhitelist]
+        FS[FunctionSelector]
+        TW[TimeWindow]
+        STC[SingleTxCap]
+        CD[Cooldown]
+        RG["ReputationGate ⭐"]
+    end
+
+    subgraph IdentityLayer["Identity Layer (ERC-8004)"]
+        AR[IrisAgentRegistry]
+        RO[IrisReputationOracle]
+    end
+
+    subgraph TrustTiers["Trust Tier Presets"]
+        T1["Tier 1: Supervised"]
+        T2["Tier 2: Autonomous"]
+        T3["Tier 3: Full Delegation"]
+    end
+
+    subgraph Agent["🤖 AI Agent"]
+        AG[Agent Wallet]
+    end
+
+    subgraph Targets["Target Contracts"]
+        UNI[Uniswap]
+        ERC20[ERC-20 Tokens]
+        DEFI[DeFi Protocols]
+    end
+
+    EOA -->|"1. Create Account"| IAF
+    IAF -->|deploys| IA
+    EOA -->|"2. Sign Delegation"| DM
+    AG -->|"3. Register (ERC-8004)"| AR
+    AR -->|identity| RO
+
+    AG -->|"4. Redeem Delegation"| DM
+    DM -->|"beforeHook"| SC
+    DM -->|"beforeHook"| CW
+    DM -->|"beforeHook"| FS
+    DM -->|"beforeHook"| TW
+    DM -->|"beforeHook"| STC
+    DM -->|"beforeHook"| CD
+    DM -->|"beforeHook"| RG
+    RG -.->|"queries score"| RO
+
+    DM -->|"5. Execute via Account"| IA
+    IA -->|"6. Call Target"| Targets
+
+    DM -->|"exceeded cap"| AQ
+    AQ -->|"human approves"| EOA
+
+    T1 -.->|bundles| SC
+    T1 -.->|bundles| CW
+    T1 -.->|bundles| TW
+    T2 -.->|bundles| SC
+    T2 -.->|bundles| CW
+    T2 -.->|bundles| RG
+    T3 -.->|bundles| STC
+    T3 -.->|bundles| CD
+    T3 -.->|bundles| RG
+
+    classDef novel fill:#7B2FBE,stroke:#00F0FF,stroke-width:2px,color:#FFFFFF
+    classDef core fill:#1A1A2E,stroke:#00F0FF,stroke-width:1px,color:#FFFFFF
+    classDef user fill:#2A2A4E,stroke:#7B2FBE,stroke-width:1px,color:#FFFFFF
+    classDef target fill:#1A1A2E,stroke:#444,stroke-width:1px,color:#AAAAAA
+
+    class RG novel
+    class IA,DM,IAF,AQ core
+    class SC,CW,FS,TW,STC,CD core
+    class AR,RO core
+    class T1,T2,T3 core
+    class EOA,AG user
+    class UNI,ERC20,DEFI target

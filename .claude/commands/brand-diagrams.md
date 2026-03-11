@@ -13,7 +13,7 @@ Apply when creating any technical diagram, flowchart, or system visualization.
 - Rounded rectangles, 8px border radius
 - Fill: Obsidian (`#1A1A2E`) with 1px Graphite (`#2A2A3E`) border
 - Label: JetBrains Mono Medium, Bone (`#E8E6E1`)
-- Sub-label (ERC standard): JetBrains Mono Regular, Ash (`#8A8A9A`), smaller
+- Sub-label (ERC standard): JetBrains Mono Regular, Ash (`#9494A6`), smaller
 
 ## Arrows
 

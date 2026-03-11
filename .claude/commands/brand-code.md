@@ -30,6 +30,10 @@ Apply when writing documentation or showing code in any visual context.
 
 When using Prism for syntax highlighting, override the default theme colors to match brand tokens. The dark theme base must use Onyx (`#22223A`) for the code background, not the Prism default.
 
+## Code Dense (13px)
+
+For the calldata inspector and dense data views, use `Code dense`: JetBrains Mono Regular 13px, line-height 1.5. This is the only context where 13px code is acceptable.
+
 ## Doc Rules
 
 - No emoji in documentation
@@ -37,3 +41,4 @@ When using Prism for syntax highlighting, override the default theme colors to m
 - Start every page with a declarative statement
 - Never use serif fonts in any code or doc context
 - All code backgrounds use Onyx (`#22223A`), never Void or Obsidian
+- Never apply negative letter-spacing (`tracking-tight`) to monospace text
