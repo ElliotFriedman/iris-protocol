@@ -1,10 +1,10 @@
 "use client";
 
 const STATUS_STYLES: Record<string, string> = {
-  active: "bg-green-500/10 text-green-400 border-green-500/20",
-  expired: "bg-gray-500/10 text-gray-400 border-gray-500/20",
-  revoked: "bg-red-500/10 text-red-400 border-red-500/20",
-  degraded: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+  active: "bg-mint/10 text-mint border-mint/20",
+  expired: "bg-ash/10 text-ash border-ash/20",
+  revoked: "bg-signal-red/10 text-signal-red border-signal-red/20",
+  degraded: "bg-amber/10 text-amber border-amber/20",
 };
 
 export function StatusBadge({ status, variant = "default" }: { status: string; variant?: "default" | "pill" }) {

@@ -8,7 +8,7 @@ export function Providers({ children }: { children: ReactNode }) {
   return (
     <DemoProvider>
       <Header />
-      <main className="pt-16 min-h-screen">
+      <main className="pt-16 min-h-screen bg-void">
         {children}
       </main>
     </DemoProvider>

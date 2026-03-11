@@ -9,7 +9,7 @@ export const TRUST_TIERS: TrustTier[] = [
     spendingCap: 0,
     reputationRequired: 0,
     permissions: ["Read balances", "Read positions", "Read prices"],
-    color: "#7B2FBE",
+    color: "#9494A6",
   },
   {
     tier: 1,
@@ -19,7 +19,7 @@ export const TRUST_TIERS: TrustTier[] = [
     spendingCap: 100,
     reputationRequired: 50,
     permissions: ["Spend up to $100/day", "Whitelisted contracts only", "7-day time window", "Co-sign for excess"],
-    color: "#9B4FDE",
+    color: "#00F0FF",
   },
   {
     tier: 2,
@@ -29,7 +29,7 @@ export const TRUST_TIERS: TrustTier[] = [
     spendingCap: 1000,
     reputationRequired: 75,
     permissions: ["Spend up to $1,000/day", "Expanded contract list", "30-day time window", "Reputation-gated"],
-    color: "#00C0DD",
+    color: "#7B2FBE",
   },
   {
     tier: 3,
@@ -39,6 +39,6 @@ export const TRUST_TIERS: TrustTier[] = [
     spendingCap: 10000,
     reputationRequired: 90,
     permissions: ["Unrestricted spending", "Any contract interaction", "90-day time window", "Emergency revoke available"],
-    color: "#00F0FF",
+    color: "#FFB800",
   },
 ];

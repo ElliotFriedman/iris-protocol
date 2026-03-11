@@ -28,6 +28,11 @@ export default function IrisAperture({
   const outerRadius = size * 0.45;
   const center = size / 2;
 
+  // Brand colors
+  const irisPurple = "#7B2FBE";
+  const electricCyan = "#00F0FF";
+  const void_ = "#0D0D14";
+
   const blades = useMemo(() => {
     const elements = [];
     for (let i = 0; i < bladeCount; i++) {
@@ -60,14 +65,14 @@ export default function IrisAperture({
           key={i}
           d={path}
           fill={`url(#app-iris-gradient-${i})`}
-          stroke="rgba(123, 47, 190, 0.6)"
+          stroke={`${irisPurple}99`}
           strokeWidth="0.5"
-          style={{ transition: "all 0.8s cubic-bezier(0.4, 0, 0.2, 1)" }}
+          style={{ transition: "all 0.8s ease-out" }}
         />
       );
     }
     return elements;
-  }, [tier, size, openness, innerRadius, outerRadius, center]);
+  }, [tier, size, openness, innerRadius, outerRadius, center, irisPurple]);
 
   const handleClick = () => {
     if (interactive && onTierChange) {
@@ -79,7 +84,7 @@ export default function IrisAperture({
     return (
       <div className={`relative inline-block ${className}`}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          <circle cx={center} cy={center} r={outerRadius} fill="#0D0D1A" stroke="rgba(123, 47, 190, 0.3)" strokeWidth="1" />
+          <circle cx={center} cy={center} r={outerRadius} fill={void_} stroke={`${irisPurple}4D`} strokeWidth="1" />
         </svg>
       </div>
     );
@@ -94,7 +99,7 @@ export default function IrisAperture({
         width={size}
         height={size}
         viewBox={`0 0 ${size} ${size}`}
-        className={animated ? "animate-pulse" : ""}
+        className={animated ? "iris-pulse" : ""}
       >
         <defs>
           {Array.from({ length: bladeCount }, (_, i) => (
@@ -117,8 +122,8 @@ export default function IrisAperture({
             </linearGradient>
           ))}
           <radialGradient id="app-iris-glow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#00F0FF" stopOpacity={0.3 + openness * 0.4} />
-            <stop offset="60%" stopColor="#7B2FBE" stopOpacity={0.15} />
+            <stop offset="0%" stopColor={electricCyan} stopOpacity={0.3 + openness * 0.4} />
+            <stop offset="60%" stopColor={irisPurple} stopOpacity={0.15} />
             <stop offset="100%" stopColor="transparent" stopOpacity="0" />
           </radialGradient>
         </defs>
@@ -131,15 +136,15 @@ export default function IrisAperture({
           stroke="url(#app-iris-glow)"
           strokeWidth="2"
           opacity={0.5}
-          style={{ transition: "all 0.8s ease" }}
+          style={{ transition: "all 0.8s ease-out" }}
         />
 
         <circle
           cx={center}
           cy={center}
           r={outerRadius}
-          fill="#0D0D1A"
-          stroke="rgba(123, 47, 190, 0.3)"
+          fill={void_}
+          stroke={`${irisPurple}4D`}
           strokeWidth="1"
         />
 
@@ -150,7 +155,7 @@ export default function IrisAperture({
           cy={center}
           r={innerRadius}
           fill="url(#app-iris-glow)"
-          style={{ transition: "all 0.8s cubic-bezier(0.4, 0, 0.2, 1)" }}
+          style={{ transition: "all 0.8s ease-out" }}
         />
 
         <circle
@@ -158,10 +163,10 @@ export default function IrisAperture({
           cy={center}
           r={innerRadius}
           fill="none"
-          stroke="#00F0FF"
+          stroke={electricCyan}
           strokeWidth="1"
           opacity={0.6 + openness * 0.4}
-          style={{ transition: "all 0.8s ease" }}
+          style={{ transition: "all 0.8s ease-out" }}
         />
 
         <circle
@@ -169,21 +174,21 @@ export default function IrisAperture({
           cy={center}
           r={outerRadius}
           fill="none"
-          stroke="rgba(123, 47, 190, 0.5)"
+          stroke={`${irisPurple}80`}
           strokeWidth="1.5"
         />
       </svg>
 
       <div
         className="absolute inset-0 flex items-center justify-center"
-        style={{ transition: "all 0.8s ease" }}
+        style={{ transition: "all 0.8s ease-out" }}
       >
         <span
           className="font-mono text-xs tracking-widest uppercase"
           style={{
-            color: openness > 0.5 ? "#00F0FF" : "#7B2FBE",
+            color: openness > 0.5 ? electricCyan : irisPurple,
             fontSize: size * 0.06,
-            transition: "color 0.8s ease",
+            transition: "color 0.8s ease-out",
           }}
         >
           {tier === 0 && "CLOSED"}

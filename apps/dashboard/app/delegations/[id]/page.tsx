@@ -19,9 +19,9 @@ export default function DelegationDetailPage({ params }: { params: Promise<{ id:
   if (!delegation) {
     return (
       <div className="max-w-7xl mx-auto px-6 py-8">
-        <div className="bg-[#232340] rounded-xl p-12 border border-white/5 text-center">
-          <p className="text-gray-500 mb-4">Delegation not found.</p>
-          <Link href="/" className="text-[#00F0FF] text-sm hover:underline">
+        <div className="bg-onyx rounded-xl p-12 border border-graphite text-center">
+          <p className="text-ash mb-4">Delegation not found.</p>
+          <Link href="/" className="text-electric-cyan text-sm hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-iris-purple focus-visible:outline-offset-2 rounded">
             Back to Dashboard
           </Link>
         </div>
@@ -38,10 +38,10 @@ export default function DelegationDetailPage({ params }: { params: Promise<{ id:
   return (
     <div className="max-w-7xl mx-auto px-6 py-8">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
-        <Link href="/" className="hover:text-white transition-colors">Dashboard</Link>
+      <div className="flex items-center gap-2 text-sm text-ash mb-6">
+        <Link href="/" className="hover:text-bone transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-iris-purple focus-visible:outline-offset-2 rounded">Dashboard</Link>
         <span>/</span>
-        <span className="text-gray-300">{delegation.agentName}</span>
+        <span className="text-bone/80">{delegation.agentName}</span>
       </div>
 
       {/* Header */}
@@ -50,23 +50,48 @@ export default function DelegationDetailPage({ params }: { params: Promise<{ id:
           <IrisAperture tier={delegation.tier} size={64} />
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="font-mono text-2xl font-bold text-white">{delegation.agentName}</h1>
+              <h1 className="font-mono text-2xl font-bold text-bone">{delegation.agentName}</h1>
               <StatusBadge status={delegation.status} variant="pill" />
             </div>
-            <p className="font-mono text-sm text-gray-500">{delegation.agentAddress}</p>
+            <p className="font-mono text-sm text-ash">{delegation.agentAddress}</p>
           </div>
         </div>
 
-        <button className="px-6 py-2.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium rounded-lg transition-colors border border-red-500/20 self-start">
+        <button className="px-6 py-2.5 bg-signal-red/10 hover:bg-signal-red/20 text-signal-red text-sm font-medium rounded-lg transition-colors duration-200 border border-signal-red/20 self-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-iris-purple focus-visible:outline-offset-2">
           Revoke Delegation
         </button>
       </div>
 
+      {/* Approval Notification Banner (if degraded) */}
+      {delegation.status === "degraded" && (
+        <div className="relative mb-8 bg-obsidian rounded-xl overflow-hidden border border-graphite">
+          {/* Severity stripe */}
+          <div className="absolute left-0 top-0 bottom-0 w-1 bg-signal-red" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-6 py-4 pl-8">
+            <div className="flex items-start sm:items-center gap-3 min-w-0">
+              <IrisAperture tier={delegation.tier} size={16} />
+              <span className="text-sm text-bone">
+                <span className="font-mono text-signal-red">Agent #{delegation.agentId}</span>
+                {" "}reputation has dropped below required threshold. Delegation is degraded.
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 pl-7 sm:pl-0">
+              <button className="px-3 py-1.5 rounded-lg text-xs font-mono border border-mint text-mint hover:bg-mint/10 transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-iris-purple focus-visible:outline-offset-2">
+                Approve
+              </button>
+              <button className="px-3 py-1.5 rounded-lg text-xs font-mono border border-ash text-ash hover:bg-ash/10 transition-colors duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-iris-purple focus-visible:outline-offset-2">
+                View Details
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Info Grid */}
       <div className="grid md:grid-cols-3 gap-4 mb-8">
         {/* Tier info */}
-        <div className="bg-[#232340] rounded-xl p-6 border border-white/5">
-          <p className="text-xs text-gray-500 font-mono uppercase tracking-wider mb-3">Trust Tier</p>
+        <div className="bg-onyx rounded-xl p-6 border border-graphite">
+          <p className="text-xs text-ash font-mono uppercase tracking-wider mb-3">Trust Tier</p>
           <div className="flex items-center gap-3">
             <span
               className="font-mono text-sm px-2 py-1 rounded"
@@ -74,93 +99,95 @@ export default function DelegationDetailPage({ params }: { params: Promise<{ id:
             >
               T{delegation.tier}
             </span>
-            <span className="font-mono text-white">{delegation.tierName}</span>
+            <span className="font-mono text-bone">{delegation.tierName}</span>
           </div>
-          <p className="text-xs text-gray-500 mt-2">{tier?.description}</p>
+          <p className="text-xs text-ash mt-2">{tier?.description}</p>
         </div>
 
         {/* Time window */}
-        <div className="bg-[#232340] rounded-xl p-6 border border-white/5">
-          <p className="text-xs text-gray-500 font-mono uppercase tracking-wider mb-3">Time Window</p>
-          <p className="font-mono text-2xl text-white font-bold">{daysLeft} days</p>
-          <p className="text-xs text-gray-500 mt-1">
+        <div className="bg-onyx rounded-xl p-6 border border-graphite">
+          <p className="text-xs text-ash font-mono uppercase tracking-wider mb-3">Time Window</p>
+          <p className="font-mono text-2xl text-bone font-bold">{daysLeft} {daysLeft === 1 ? "day" : "days"}</p>
+          <p className="text-xs text-ash mt-1">
             {new Date(delegation.timeWindowStart).toLocaleDateString()} &mdash;{" "}
             {new Date(delegation.timeWindowEnd).toLocaleDateString()}
           </p>
         </div>
 
         {/* Caveats */}
-        <div className="bg-[#232340] rounded-xl p-6 border border-white/5">
-          <p className="text-xs text-gray-500 font-mono uppercase tracking-wider mb-3">Contract Whitelist</p>
+        <div className="bg-onyx rounded-xl p-6 border border-graphite">
+          <p className="text-xs text-ash font-mono uppercase tracking-wider mb-3">Contract Whitelist</p>
           <div className="space-y-1">
             {delegation.contractWhitelist.map((addr) => (
-              <p key={addr} className="font-mono text-xs text-gray-400">{addr}</p>
+              <p key={addr} className="font-mono text-xs text-ash">{addr}</p>
             ))}
           </div>
         </div>
       </div>
 
       {/* Spending Tracker */}
-      <div className="bg-[#232340] rounded-xl p-6 border border-white/5 mb-8">
+      <div className="bg-onyx rounded-xl p-6 border border-graphite mb-8">
         <div className="flex items-center justify-between mb-4">
-          <p className="text-xs text-gray-500 font-mono uppercase tracking-wider">Spending Tracker</p>
-          <p className="font-mono text-sm text-gray-400">
+          <p className="text-xs text-ash font-mono uppercase tracking-wider">Spending Tracker</p>
+          <p className="font-mono text-sm text-ash">
             ${delegation.spendingUsed.toFixed(2)} / ${delegation.spendingCap.toFixed(2)}
           </p>
         </div>
-        <div className="h-4 bg-[#1A1A2E] rounded-full overflow-hidden">
+        <div className="h-4 bg-obsidian rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-500"
             style={{
               width: `${spendingPct}%`,
-              backgroundColor: spendingPct > 90 ? "#FF4444" : spendingPct > 70 ? "#F0C000" : "#00F0FF",
+              backgroundColor: spendingPct > 90 ? "var(--signal-red)" : spendingPct > 70 ? "var(--amber)" : "var(--electric-cyan)",
             }}
           />
         </div>
-        <p className="text-xs text-gray-600 mt-2">
+        <p className="text-xs text-ash mt-2">
           {spendingPct.toFixed(1)}% of daily cap used
         </p>
       </div>
 
       {/* Reputation Monitor */}
-      <div className="bg-[#232340] rounded-xl p-6 border border-white/5 mb-8">
+      <div className="bg-onyx rounded-xl p-6 border border-graphite mb-8">
         <div className="flex items-center justify-between mb-4">
-          <p className="text-xs text-gray-500 font-mono uppercase tracking-wider">Reputation Monitor</p>
-          <span className={`font-mono text-sm font-bold ${repMet ? "text-[#00F0FF]" : "text-red-400"}`}>
+          <p className="text-xs text-ash font-mono uppercase tracking-wider">Reputation Monitor</p>
+          <span className={`font-mono text-sm font-bold ${repMet ? "text-mint" : "text-signal-red"}`}>
             {repMet ? "THRESHOLD MET" : "BELOW THRESHOLD"}
           </span>
         </div>
-        <div className="flex items-center gap-6">
-          <div>
-            <p className="text-xs text-gray-500 mb-1">Current Score</p>
-            <p
-              className="font-mono text-3xl font-bold"
-              style={{
-                color: delegation.reputation >= 75 ? "#00F0FF" : delegation.reputation >= 50 ? "#F0C000" : "#FF4444",
-              }}
-            >
-              {delegation.reputation}
-            </p>
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6">
+          <div className="flex items-center gap-6">
+            <div>
+              <p className="text-xs text-ash mb-1">Current Score</p>
+              <p
+                className="font-mono text-3xl font-bold"
+                style={{
+                  color: delegation.reputation >= 75 ? "var(--mint)" : delegation.reputation >= 50 ? "var(--amber)" : "var(--signal-red)",
+                }}
+              >
+                {delegation.reputation}
+              </p>
+            </div>
+            <div className="text-ash text-2xl">/</div>
+            <div>
+              <p className="text-xs text-ash mb-1">Required</p>
+              <p className="font-mono text-3xl font-bold text-ash">
+                {delegation.reputationRequired}
+              </p>
+            </div>
           </div>
-          <div className="text-gray-600 text-2xl">/</div>
-          <div>
-            <p className="text-xs text-gray-500 mb-1">Required</p>
-            <p className="font-mono text-3xl font-bold text-gray-400">
-              {delegation.reputationRequired}
-            </p>
-          </div>
-          <div className="flex-1 ml-8">
-            <div className="h-3 bg-[#1A1A2E] rounded-full overflow-hidden relative">
+          <div className="flex-1">
+            <div className="h-3 bg-obsidian rounded-full overflow-hidden relative">
               {/* Threshold marker */}
               <div
-                className="absolute top-0 bottom-0 w-0.5 bg-white/40 z-10"
+                className="absolute top-0 bottom-0 w-0.5 bg-bone/40 z-10"
                 style={{ left: `${delegation.reputationRequired}%` }}
               />
               <div
-                className="h-full rounded-full transition-all"
+                className="h-full rounded-full transition-all duration-200"
                 style={{
                   width: `${delegation.reputation}%`,
-                  backgroundColor: delegation.reputation >= 75 ? "#00F0FF" : delegation.reputation >= 50 ? "#F0C000" : "#FF4444",
+                  backgroundColor: delegation.reputation >= 75 ? "var(--mint)" : delegation.reputation >= 50 ? "var(--amber)" : "var(--signal-red)",
                 }}
               />
             </div>
@@ -170,38 +197,38 @@ export default function DelegationDetailPage({ params }: { params: Promise<{ id:
 
       {/* Activity Log */}
       <div>
-        <h2 className="font-mono text-xl font-bold text-white mb-4">Activity Log</h2>
+        <h2 className="font-mono text-xl font-bold text-bone mb-4">Activity Log</h2>
         {activities.length === 0 ? (
-          <div className="bg-[#232340] rounded-xl p-8 border border-white/5 text-center">
-            <p className="text-gray-500">No activity recorded for this delegation.</p>
+          <div className="bg-onyx rounded-xl p-8 border border-graphite text-center">
+            <p className="text-ash">No activity recorded for this delegation.</p>
           </div>
         ) : (
-          <div className="bg-[#232340] rounded-xl border border-white/5 overflow-hidden">
-            <table className="w-full">
+          <div className="bg-onyx rounded-xl border border-graphite overflow-x-auto">
+            <table className="w-full min-w-[640px]">
               <thead>
-                <tr className="border-b border-white/5">
-                  <th className="px-4 py-3 text-left text-xs text-gray-500 font-mono uppercase tracking-wider">Type</th>
-                  <th className="px-4 py-3 text-left text-xs text-gray-500 font-mono uppercase tracking-wider">Description</th>
-                  <th className="px-4 py-3 text-left text-xs text-gray-500 font-mono uppercase tracking-wider">Amount</th>
-                  <th className="px-4 py-3 text-left text-xs text-gray-500 font-mono uppercase tracking-wider">Tx Hash</th>
-                  <th className="px-4 py-3 text-left text-xs text-gray-500 font-mono uppercase tracking-wider">Status</th>
+                <tr className="border-b border-graphite">
+                  <th className="px-4 py-3 text-left text-xs text-ash font-mono uppercase tracking-wider">Type</th>
+                  <th className="px-4 py-3 text-left text-xs text-ash font-mono uppercase tracking-wider">Description</th>
+                  <th className="px-4 py-3 text-left text-xs text-ash font-mono uppercase tracking-wider">Amount</th>
+                  <th className="px-4 py-3 text-left text-xs text-ash font-mono uppercase tracking-wider">Tx Hash</th>
+                  <th className="px-4 py-3 text-left text-xs text-ash font-mono uppercase tracking-wider">Status</th>
                 </tr>
               </thead>
               <tbody>
                 {activities.map((act) => (
-                  <tr key={act.id} className="border-b border-white/5 last:border-0">
+                  <tr key={act.id} className="border-b border-graphite last:border-0">
                     <td className="px-4 py-3">
-                      <span className="font-mono text-xs px-2 py-1 rounded bg-[#7B2FBE]/10 text-[#7B2FBE]">
+                      <span className="font-mono text-xs px-2 py-1 rounded bg-iris-purple/10 text-electric-cyan">
                         {act.type}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm text-gray-300">{act.description}</td>
-                    <td className="px-4 py-3 font-mono text-sm text-white">{act.amount}</td>
-                    <td className="px-4 py-3 font-mono text-xs text-gray-500">{act.txHash}</td>
+                    <td className="px-4 py-3 text-sm text-bone/80">{act.description}</td>
+                    <td className="px-4 py-3 font-mono text-sm text-bone">{act.amount}</td>
+                    <td className="px-4 py-3 font-mono text-xs text-ash">{act.txHash}</td>
                     <td className="px-4 py-3">
                       <span className={`text-xs font-mono ${
-                        act.status === "success" ? "text-green-400" :
-                        act.status === "blocked" ? "text-red-400" : "text-yellow-400"
+                        act.status === "success" ? "text-mint" :
+                        act.status === "blocked" ? "text-signal-red" : "text-amber"
                       }`}>
                         {act.status}
                       </span>
