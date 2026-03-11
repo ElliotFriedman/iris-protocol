@@ -42,8 +42,8 @@ const LAYER_COLORS = [
   "border-electric-cyan/20 text-electric-cyan/60",
   "border-electric-cyan/30 text-electric-cyan/70",
   "border-electric-cyan/50 text-electric-cyan/80",
-  "border-iris-purple/40 text-iris-purple/80",
-  "border-iris-purple text-iris-purple",
+  "border-iris-purple/40 text-iris-light/80",
+  "border-iris-purple text-iris-light",
 ];
 
 export default function DefenseInDepthSection() {

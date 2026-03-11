@@ -38,10 +38,13 @@
   --onyx: #22223A;
   --graphite: #2A2A3E;
   --bone: #E8E6E1;
-  --ash: #8A8A9A;
+  --ash: #9494A6;
+  --iris-light: #A76BE0;
   --amber: #FFB800;
   --signal-red: #FF3B5C;
   --mint: #00E88F;
+  --tier-cyan: #40E0FF;
+  --tier-gold: #E6A800;
 }
 
 @theme inline {
@@ -54,10 +57,13 @@
   --color-onyx: #22223A;
   --color-graphite: #2A2A3E;
   --color-bone: #E8E6E1;
-  --color-ash: #8A8A9A;
+  --color-ash: #9494A6;
+  --color-iris-light: #A76BE0;
   --color-amber: #FFB800;
   --color-signal-red: #FF3B5C;
   --color-mint: #00E88F;
+  --color-tier-cyan: #40E0FF;
+  --color-tier-gold: #E6A800;
   --font-sans: 'Satoshi', "DM Sans", "Outfit", sans-serif;
   --font-mono: 'JetBrains Mono', "SF Mono", "Fira Code", "Courier New", monospace;
 }

@@ -142,7 +142,7 @@ function SlideTrustTiers() {
     {
       tier: "Tier 0",
       name: "Iris Closed",
-      color: "#8A8A9A",
+      color: "#9494A6",
       desc: "View only, human signs everything",
     },
     {

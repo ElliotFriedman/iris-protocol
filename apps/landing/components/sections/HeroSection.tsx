@@ -20,32 +20,32 @@ export default function HeroSection() {
           <IrisAperture tier={2} size={240} animated />
         </div>
 
-        <h1 className="font-mono text-5xl md:text-7xl font-bold text-bone mb-6">
+        <h1 className="font-mono text-5xl md:text-7xl font-bold text-bone mb-6 tracking-normal leading-[1.05]">
           Iris Protocol
         </h1>
 
-        <p className="text-2xl md:text-3xl font-mono text-electric-cyan mb-4">
+        <p className="text-2xl md:text-3xl font-mono text-electric-cyan mb-4 tracking-normal">
           Privy, but trustless.
         </p>
 
-        <p className="text-lg md:text-xl text-bone/80 max-w-2xl mx-auto mb-4">
+        <p className="text-lg md:text-xl text-ash max-w-2xl mx-auto mb-4 font-sans">
           Trustless payment infrastructure for AI agents.
         </p>
 
-        <p className="text-lg md:text-xl text-ash max-w-2xl mx-auto mb-12">
+        <p className="text-lg md:text-xl text-ash max-w-2xl mx-auto mb-12 font-sans">
           Every permission lives onchain. Every agent earns its trust.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <a
             href="../app"
-            className="px-8 py-4 bg-iris-purple hover:bg-iris-purple/80 text-bone font-semibold rounded-lg transition-all hover:shadow-lg hover:shadow-iris-purple/20 text-lg"
+            className="px-8 py-4 bg-iris-purple hover:bg-[#8E4FCC] text-bone font-sans font-medium rounded-[8px] transition-all hover:shadow-lg hover:shadow-iris-purple/20 text-base tracking-[0.01em]"
           >
             View Demo
           </a>
           <a
             href="../docs"
-            className="px-8 py-4 border border-electric-cyan/30 hover:border-electric-cyan text-electric-cyan font-semibold rounded-lg transition-all hover:bg-electric-cyan/5 text-lg"
+            className="px-8 py-4 border border-electric-cyan/30 hover:border-electric-cyan text-electric-cyan font-sans font-medium rounded-[8px] transition-all hover:bg-electric-cyan/5 text-base tracking-[0.01em]"
           >
             Read Docs
           </a>

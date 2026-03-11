@@ -16,7 +16,7 @@ const TRUST_TIERS = [
     name: "Supervised",
     label: "Iris Narrow",
     description: "Agent spends up to $100/day. Excess requires human co-signature.",
-    color: "#00F0FF",
+    color: "#40E0FF",
   },
   {
     tier: 2,
@@ -30,7 +30,7 @@ const TRUST_TIERS = [
     name: "Full Delegation",
     label: "Iris Open",
     description: "Maximum autonomy. Emergency revocation always available.",
-    color: "#FFB800",
+    color: "#E6A800",
   },
 ];
 
@@ -73,7 +73,7 @@ export default function ConfigureIrisSection() {
           </div>
         </div>
 
-        <div className="grid md:grid-cols-4 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {TRUST_TIERS.map((t) => (
             <div
               key={t.tier}

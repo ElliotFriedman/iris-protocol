@@ -60,7 +60,7 @@ export default function IrisAperture({
           stroke="rgba(123, 47, 190, 0.6)"
           strokeWidth="0.5"
           style={{
-            transition: "all 0.8s cubic-bezier(0.4, 0, 0.2, 1)",
+            transition: "all 0.8s ease-out",
           }}
         />
       );
@@ -72,7 +72,7 @@ export default function IrisAperture({
     return (
       <div className={`relative inline-block ${className}`}>
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-          <circle cx={center} cy={center} r={outerRadius} fill="#0D0D1A" stroke="rgba(123, 47, 190, 0.3)" strokeWidth="1" />
+          <circle cx={center} cy={center} r={outerRadius} fill="#0D0D14" stroke="rgba(123, 47, 190, 0.3)" strokeWidth="1" />
         </svg>
       </div>
     );
@@ -125,7 +125,7 @@ export default function IrisAperture({
           stroke="url(#iris-glow)"
           strokeWidth="2"
           opacity={0.5}
-          style={{ transition: "all 0.8s ease" }}
+          style={{ transition: "all 0.8s ease-out" }}
         />
 
         {/* Background circle */}
@@ -133,7 +133,7 @@ export default function IrisAperture({
           cx={center}
           cy={center}
           r={outerRadius}
-          fill="#0D0D1A"
+          fill="#0D0D14"
           stroke="rgba(123, 47, 190, 0.3)"
           strokeWidth="1"
         />
@@ -147,7 +147,7 @@ export default function IrisAperture({
           cy={center}
           r={innerRadius}
           fill="url(#iris-glow)"
-          style={{ transition: "all 0.8s cubic-bezier(0.4, 0, 0.2, 1)" }}
+          style={{ transition: "all 0.8s ease-out" }}
         />
 
         {/* Inner ring */}
@@ -159,7 +159,7 @@ export default function IrisAperture({
           stroke="#00F0FF"
           strokeWidth="1"
           opacity={0.6 + openness * 0.4}
-          style={{ transition: "all 0.8s ease" }}
+          style={{ transition: "all 0.8s ease-out" }}
         />
 
         {/* Outer ring */}
@@ -176,14 +176,14 @@ export default function IrisAperture({
       {/* Tier label */}
       <div
         className="absolute inset-0 flex items-center justify-center"
-        style={{ transition: "all 0.8s ease" }}
+        style={{ transition: "all 0.8s ease-out" }}
       >
         <span
           className="font-mono text-xs tracking-widest uppercase"
           style={{
             color: openness > 0.5 ? "#00F0FF" : "#7B2FBE",
             fontSize: size * 0.06,
-            transition: "color 0.8s ease",
+            transition: "color 0.8s ease-out",
           }}
         >
           {tier === 0 && "CLOSED"}
