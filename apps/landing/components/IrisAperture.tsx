@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 interface IrisApertureProps {
   tier: number; // 0-3
@@ -15,6 +15,9 @@ export default function IrisAperture({
   animated = false,
   className = "",
 }: IrisApertureProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const bladeCount = 8;
   // tier 0 = mostly closed (small opening), tier 3 = wide open
   const openness = tier / 3;
@@ -64,6 +67,16 @@ export default function IrisAperture({
     }
     return elements;
   }, [tier, size, openness, innerRadius, outerRadius, center]);
+
+  if (!mounted) {
+    return (
+      <div className={`relative inline-block ${className}`}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <circle cx={center} cy={center} r={outerRadius} fill="#0D0D1A" stroke="rgba(123, 47, 190, 0.3)" strokeWidth="1" />
+        </svg>
+      </div>
+    );
+  }
 
   return (
     <div className={`relative inline-block ${className}`}>
