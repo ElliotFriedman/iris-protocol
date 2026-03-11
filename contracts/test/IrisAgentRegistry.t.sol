@@ -90,4 +90,35 @@ contract IrisAgentRegistryTest is Test {
     function test_isRegisteredReturnsFalseForNonexistent() public view {
         assertFalse(registry.isRegistered(999));
     }
+
+    // -----------------------------------------------------------------------
+    // Additional branch coverage
+    // -----------------------------------------------------------------------
+
+    function test_deactivateRevertsForNonexistentAgent() public {
+        vm.expectRevert(abi.encodeWithSelector(IrisAgentRegistry.AgentNotFound.selector, 999));
+        registry.deactivateAgent(999);
+    }
+
+    function test_isRegisteredReturnsFalseForDeactivatedAgent() public {
+        vm.prank(operator);
+        uint256 agentId = registry.registerAgent("ipfs://metadata");
+
+        assertTrue(registry.isRegistered(agentId));
+
+        vm.prank(operator);
+        registry.deactivateAgent(agentId);
+
+        // operator != address(0) but active == false
+        assertFalse(registry.isRegistered(agentId));
+    }
+
+    function test_registerAgentWithEmptyMetadataURI() public {
+        vm.prank(operator);
+        uint256 agentId = registry.registerAgent("");
+
+        IrisAgentRegistry.AgentInfo memory info = registry.getAgent(agentId);
+        assertEq(info.metadataURI, "");
+        assertTrue(info.active);
+    }
 }

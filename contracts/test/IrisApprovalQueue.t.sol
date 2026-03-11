@@ -258,4 +258,66 @@ contract IrisApprovalQueueTest is Test {
     function test_expiryDurationIsSetCorrectly() public view {
         assertEq(queue.expiryDuration(), EXPIRY);
     }
+
+    // -----------------------------------------------------------------------
+    // Additional branch coverage
+    // -----------------------------------------------------------------------
+
+    function test_rejectAlreadyApprovedReverts() public {
+        bytes32 requestId = _submit();
+
+        vm.prank(delegator);
+        queue.approveRequest(requestId);
+
+        vm.prank(delegator);
+        vm.expectRevert(abi.encodeWithSelector(IrisApprovalQueue.RequestAlreadyResolved.selector, requestId));
+        queue.rejectRequest(requestId);
+    }
+
+    function test_approveNonexistentRequestReverts() public {
+        bytes32 fakeId = bytes32(uint256(0xdead));
+        vm.prank(delegator);
+        vm.expectRevert(abi.encodeWithSelector(IrisApprovalQueue.RequestNotFound.selector, fakeId));
+        queue.approveRequest(fakeId);
+    }
+
+    function test_rejectNonexistentRequestReverts() public {
+        bytes32 fakeId = bytes32(uint256(0xdead));
+        vm.prank(delegator);
+        vm.expectRevert(abi.encodeWithSelector(IrisApprovalQueue.RequestNotFound.selector, fakeId));
+        queue.rejectRequest(fakeId);
+    }
+
+    function test_isExpiredReturnsFalseAtExactExpiry() public {
+        bytes32 requestId = _submit();
+        // Warp to exactly the expiry boundary (submittedAt + expiryDuration)
+        vm.warp(block.timestamp + EXPIRY);
+        // block.timestamp == submittedAt + expiryDuration, so NOT expired (requires >)
+        assertFalse(queue.isExpired(requestId));
+    }
+
+    function test_approveAtExactExpirySucceeds() public {
+        bytes32 requestId = _submit();
+        vm.warp(block.timestamp + EXPIRY);
+
+        vm.prank(delegator);
+        queue.approveRequest(requestId);
+
+        IrisApprovalQueue.ApprovalRequest memory req = queue.getRequest(requestId);
+        assertTrue(req.approved);
+    }
+
+    function test_isPendingImmediatelyAfterSubmit() public {
+        bytes32 requestId = _submit();
+
+        IrisApprovalQueue.ApprovalRequest memory req = queue.getRequest(requestId);
+        assertFalse(req.approved);
+        assertFalse(req.rejected);
+        assertFalse(queue.isExpired(requestId));
+    }
+
+    function test_getPendingRequestsForUnknownDelegator() public view {
+        bytes32[] memory pending = queue.getPendingRequests(address(0xdead));
+        assertEq(pending.length, 0);
+    }
 }
