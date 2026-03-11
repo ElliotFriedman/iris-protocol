@@ -48,7 +48,7 @@ const LAYER_COLORS = [
 
 export default function DefenseInDepthSection() {
   return (
-    <section className="py-32 px-6">
+    <section className="py-32 px-6 overflow-x-hidden">
       <div className="max-w-6xl mx-auto">
         <h2 className="font-mono text-4xl md:text-5xl font-bold text-bone text-center mb-4">
           Defense in Depth
@@ -57,32 +57,32 @@ export default function DefenseInDepthSection() {
           Not one lock &mdash; seven. Each independently enforceable, all composable.
         </p>
 
-        {/* Stacking layers */}
+        {/* Stacking layers — no stagger on mobile, progressive stagger on desktop */}
         <div className="max-w-3xl mx-auto space-y-3">
-          {ENFORCERS.map((enforcer, i) => (
-            <div
-              key={enforcer.name}
-              className={`border ${LAYER_COLORS[i]} rounded-xl p-5 bg-onyx transition-all hover:bg-onyx/80`}
-              style={{
-                marginLeft: `${(6 - i) * 12}px`,
-                marginRight: `${(6 - i) * 12}px`,
-              }}
-            >
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <span className="font-mono text-xs text-ash/60 w-5">
-                    {enforcer.layer}
-                  </span>
-                  <span className="font-mono text-sm md:text-base text-bone">
-                    {enforcer.name}
+          {ENFORCERS.map((enforcer, i) => {
+            const inset = (6 - i) * 12;
+            return (
+              <div
+                key={enforcer.name}
+                className={`border ${LAYER_COLORS[i]} rounded-xl p-4 md:p-5 bg-onyx transition-all hover:bg-onyx/80 mx-0 md:mx-[var(--inset)]`}
+                style={{ "--inset": `${inset}px` } as React.CSSProperties}
+              >
+                <div className="flex items-center justify-between gap-2 md:gap-4">
+                  <div className="flex items-center gap-2 md:gap-3 min-w-0">
+                    <span className="font-mono text-xs text-ash/60 w-5 shrink-0">
+                      {enforcer.layer}
+                    </span>
+                    <span className="font-mono text-xs sm:text-sm md:text-base text-bone truncate">
+                      {enforcer.name}
+                    </span>
+                  </div>
+                  <span className="text-xs sm:text-sm text-ash text-right shrink-0">
+                    {enforcer.description}
                   </span>
                 </div>
-                <span className="text-sm text-ash text-right">
-                  {enforcer.description}
-                </span>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <p className="text-ash/60 text-center max-w-xl mx-auto mt-12 text-sm font-mono">
