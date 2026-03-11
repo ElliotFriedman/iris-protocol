@@ -1,8 +1,13 @@
 /**
  * Iris Protocol Design System
- * Primary: #7B2FBE (Iris purple)
- * Secondary: #00F0FF (Electric cyan)
- * Surfaces: Void #0D0D14 → Obsidian #1A1A2E → Onyx #22223A → Graphite #2A2A3E
+ *
+ * Brand tokens defined as CSS custom properties.
+ * Primary: --iris-purple (Iris purple)
+ * Secondary: --iris-cyan (Electric cyan)
+ *
+ * Surface hierarchy (darkest → lightest):
+ *   Void → Obsidian → Onyx → Graphite
+ *   Page bg   Cards/nav  Code blocks  Borders/dividers
  */
 
 :root {
@@ -18,55 +23,69 @@
 }
 
 [data-theme='dark'] {
-  --ifm-color-primary: #7B2FBE;
+  /* ── Brand tokens ── */
+  --iris-void: #0D0D14;
+  --iris-obsidian: #1A1A2E;
+  --iris-onyx: #22223A;
+  --iris-graphite: #2A2A3E;
+  --iris-bone: #E8E6E1;
+  --iris-ash: #8A8A9A;
+  --iris-purple: #7B2FBE;
+  --iris-cyan: #00F0FF;
+  --iris-amber: #FFB800;
+  --iris-signal-red: #FF3B5C;
+  --iris-mint: #00E88F;
+
+  /* ── Docusaurus overrides ── */
+  --ifm-color-primary: var(--iris-purple);
   --ifm-color-primary-dark: #6E2AAB;
   --ifm-color-primary-darker: #6827A1;
   --ifm-color-primary-darkest: #562085;
   --ifm-color-primary-light: #8B44CA;
   --ifm-color-primary-lighter: #9150CF;
   --ifm-color-primary-lightest: #A76FDA;
-  --ifm-background-color: #0D0D14;
-  --ifm-background-surface-color: #1A1A2E;
-  --ifm-navbar-background-color: #1A1A2E;
-  --ifm-footer-background-color: #1A1A2E;
-  --ifm-card-background-color: #1A1A2E;
-  --ifm-toc-border-color: #2A2A3E;
-  --ifm-color-secondary: #00F0FF;
+  --ifm-background-color: var(--iris-void);
+  --ifm-background-surface-color: var(--iris-obsidian);
+  --ifm-navbar-background-color: var(--iris-obsidian);
+  --ifm-footer-background-color: var(--iris-obsidian);
+  --ifm-card-background-color: var(--iris-obsidian);
+  --ifm-toc-border-color: var(--iris-graphite);
+  --ifm-color-secondary: var(--iris-cyan);
   --docusaurus-highlighted-code-line-bg: rgba(123, 47, 190, 0.3);
 }
 
 [data-theme='dark'] .navbar {
-  border-bottom: 1px solid #2A2A3E;
+  border-bottom: 1px solid var(--iris-graphite);
 }
 
 [data-theme='dark'] .footer {
-  border-top: 1px solid #2A2A3E;
+  border-top: 1px solid var(--iris-graphite);
 }
 
 [data-theme='dark'] a {
-  color: #00F0FF;
+  color: var(--iris-cyan);
 }
 
 [data-theme='dark'] a:hover {
-  color: #33F5FF;
+  color: color-mix(in srgb, var(--iris-cyan) 80%, white);
 }
 
 [data-theme='dark'] .menu__link--active {
-  color: #00F0FF;
+  color: var(--iris-cyan);
 }
 
 [data-theme='dark'] .table-of-contents__link--active {
-  color: #00F0FF;
+  color: var(--iris-cyan);
 }
 
 /* Code block styling — Onyx background per brand-code */
 [data-theme='dark'] .prism-code {
-  background-color: #22223A !important;
+  background-color: var(--iris-onyx) !important;
 }
 
 /* Mermaid diagram styling */
 [data-theme='dark'] .docusaurus-mermaid-container {
-  background-color: #22223A;
+  background-color: var(--iris-onyx);
   border-radius: 8px;
   padding: 1rem;
 }
@@ -77,35 +96,35 @@
 }
 
 [data-theme='dark'] table th {
-  background-color: #22223A;
-  border-color: #2A2A3E;
+  background-color: var(--iris-onyx);
+  border-color: var(--iris-graphite);
 }
 
 [data-theme='dark'] table td {
-  border-color: #2A2A3E;
+  border-color: var(--iris-graphite);
 }
 
 [data-theme='dark'] table tr:nth-child(2n) {
-  background-color: #1A1A2E;
+  background-color: var(--iris-obsidian);
 }
 
 /* Blockquote styling */
 [data-theme='dark'] blockquote {
-  border-left-color: #7B2FBE;
-  background-color: #1A1A2E;
+  border-left-color: var(--iris-purple);
+  background-color: var(--iris-obsidian);
 }
 
 /* Admonition styling */
 [data-theme='dark'] .alert--info {
   --ifm-alert-background-color: rgba(0, 240, 255, 0.1);
-  --ifm-alert-border-color: #00F0FF;
+  --ifm-alert-border-color: var(--iris-cyan);
 }
 
 /* Heading accents — use Bone for all headings */
 [data-theme='dark'] h1 {
-  color: #E8E6E1;
+  color: var(--iris-bone);
 }
 
 [data-theme='dark'] h2 {
-  color: #E8E6E1;
+  color: var(--iris-bone);
 }
