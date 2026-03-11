@@ -169,8 +169,8 @@ contract MultiAgentIntegrationTest is Test {
         assertEq(address(receiver).balance, 23 ether);
 
         // Agent B tries 3 ETH again — cumulative 6, exceeds 5 cap
-        Delegation memory dB2 = _buildDelegation(agentB, agentBId, cavB, 3);
-        bool ok = _tryRedeemAs(agentB, dB2, Action({target: address(receiver), value: 3 ether, callData: ""}));
+        // Reuse same delegation (same hash) so the spending tracker accumulates
+        bool ok = _tryRedeemAs(agentB, dB, Action({target: address(receiver), value: 3 ether, callData: ""}));
         assertFalse(ok, "Agent B should be capped at 5 ETH/day");
 
         // Agent A can still send — independent spending tracker

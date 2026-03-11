@@ -26,10 +26,14 @@ Use `/frontend-test` to screenshot and interact with the frontend using Playwrig
 
 ## Project Structure
 
-- `src/` — Solidity contracts (IrisDelegationManager, caveat enforcers, presets)
-- `demo/` — Frontend demo and landing page
-- `test/` — Contract tests
-- `script/` — Deployment scripts
+- `contracts/` — Foundry project (build with `cd contracts && forge build`)
+  - `contracts/src/` — Solidity contracts (IrisDelegationManager, caveat enforcers, presets)
+  - `contracts/test/` — Contract tests
+  - `contracts/script/` — Deployment scripts
+  - `contracts/lib/` — Git submodules (forge-std, openzeppelin, delegation-framework)
+- `apps/dashboard/` — Next.js dashboard app (`@iris-protocol/dashboard`)
+- `apps/landing/` — Next.js landing page (`@iris-protocol/landing`)
+- `docs/` — Docusaurus documentation (independent dep tree)
 
 ## Conventions
 
