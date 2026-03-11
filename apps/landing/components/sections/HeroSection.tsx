@@ -20,36 +20,40 @@ export default function HeroSection() {
           <IrisAperture tier={2} size={240} animated />
         </div>
 
-        <h1 className="font-mono text-5xl md:text-7xl font-bold text-white mb-6 tracking-tight">
+        <h1 className="font-mono text-5xl md:text-7xl font-bold text-bone mb-6">
           Iris Protocol
         </h1>
 
-        <p className="text-2xl md:text-3xl font-mono text-[#00F0FF] mb-4">
+        <p className="text-2xl md:text-3xl font-mono text-electric-cyan mb-4">
           Privy, but trustless.
         </p>
 
-        <p className="text-lg md:text-xl text-gray-400 max-w-2xl mx-auto mb-12">
-          Embedded agent wallets where every permission lives onchain.
+        <p className="text-lg md:text-xl text-bone/80 max-w-2xl mx-auto mb-4">
+          Trustless payment infrastructure for AI agents.
+        </p>
+
+        <p className="text-lg md:text-xl text-ash max-w-2xl mx-auto mb-12">
+          Every permission lives onchain. Every agent earns its trust.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <a
             href="../app"
-            className="px-8 py-4 bg-[#7B2FBE] hover:bg-[#6B25A8] text-white font-semibold rounded-lg transition-all hover:shadow-lg hover:shadow-purple-500/20 text-lg"
+            className="px-8 py-4 bg-iris-purple hover:bg-iris-purple/80 text-bone font-semibold rounded-lg transition-all hover:shadow-lg hover:shadow-iris-purple/20 text-lg"
           >
             View Demo
           </a>
           <a
             href="../docs"
-            className="px-8 py-4 border border-[#00F0FF]/30 hover:border-[#00F0FF] text-[#00F0FF] font-semibold rounded-lg transition-all hover:bg-[#00F0FF]/5 text-lg"
+            className="px-8 py-4 border border-electric-cyan/30 hover:border-electric-cyan text-electric-cyan font-semibold rounded-lg transition-all hover:bg-electric-cyan/5 text-lg"
           >
             Read Docs
           </a>
         </div>
       </div>
 
-      {/* Bottom gradient fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#0D0D14] to-transparent" />
+      {/* Bottom fade — solid overlay, not gradient on large surface */}
+      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-void to-transparent" />
     </section>
   );
 }

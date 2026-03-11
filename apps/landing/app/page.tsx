@@ -7,6 +7,7 @@ import TrustProblemSection from "@/components/sections/TrustProblemSection";
 import ConfigureIrisSection from "@/components/sections/ConfigureIrisSection";
 import StandardsSection from "@/components/sections/StandardsSection";
 import ReputationSection from "@/components/sections/ReputationSection";
+import DefenseInDepthSection from "@/components/sections/DefenseInDepthSection";
 import BuiltBySection from "@/components/sections/BuiltBySection";
 
 export default function LandingPage() {
@@ -18,6 +19,7 @@ export default function LandingPage() {
       <ConfigureIrisSection />
       <StandardsSection />
       <ReputationSection />
+      <DefenseInDepthSection />
       <BuiltBySection />
       <Footer />
     </main>
