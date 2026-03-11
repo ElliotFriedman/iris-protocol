@@ -2,15 +2,7 @@
 pragma solidity 0.8.28;
 
 import {Script, console} from "forge-std/Script.sol";
-import {IrisDelegationManager} from "../src/IrisDelegationManager.sol";
-import {IrisAccountFactory} from "../src/IrisAccountFactory.sol";
-import {IrisAccount} from "../src/IrisAccount.sol";
-import {IrisAgentRegistry} from "../src/identity/IrisAgentRegistry.sol";
-import {IrisReputationOracle} from "../src/identity/IrisReputationOracle.sol";
-import {SpendingCapEnforcer} from "../src/caveats/SpendingCapEnforcer.sol";
-import {ContractWhitelistEnforcer} from "../src/caveats/ContractWhitelistEnforcer.sol";
-import {TimeWindowEnforcer} from "../src/caveats/TimeWindowEnforcer.sol";
-import {ReputationGateEnforcer} from "../src/caveats/ReputationGateEnforcer.sol";
+import {IrisDeployer} from "../src/deployers/IrisDeployer.sol";
 import {Delegation, Action, Caveat} from "../src/interfaces/IERC7710.sol";
 
 /// @title Demo
@@ -22,6 +14,8 @@ import {Delegation, Action, Caveat} from "../src/interfaces/IERC7710.sol";
 ///         5. Execute within bounds
 ///         6. Attempt to exceed bounds (fails)
 ///         7. Revoke the delegation
+/// @dev Uses the shared IrisDeployer fixture to ensure deploy scripts and tests
+///      exercise the exact same deployment path.
 contract Demo is Script {
     function run() external {
         uint256 deployerKey = vm.envUint("PRIVATE_KEY");
@@ -29,27 +23,19 @@ contract Demo is Script {
 
         vm.startBroadcast(deployerKey);
 
-        // --- Step 1: Deploy ---
+        // --- Step 1: Deploy via shared fixture ---
         console.log("--- Step 1: Deploy ---");
-        IrisDelegationManager delegationManager = new IrisDelegationManager();
-        IrisAccountFactory accountFactory = new IrisAccountFactory();
-        IrisAgentRegistry agentRegistry = new IrisAgentRegistry();
-        IrisReputationOracle reputationOracle = new IrisReputationOracle(address(agentRegistry), deployer);
-        SpendingCapEnforcer spendingCap = new SpendingCapEnforcer();
-        ContractWhitelistEnforcer whitelistEnforcer = new ContractWhitelistEnforcer();
-        TimeWindowEnforcer timeWindowEnforcer = new TimeWindowEnforcer();
-        ReputationGateEnforcer reputationGate = new ReputationGateEnforcer();
-
+        IrisDeployer.Deployment memory d = IrisDeployer.deployAll(deployer, 86_400);
         console.log("Contracts deployed");
 
         // --- Step 2: Register Agent ---
         console.log("--- Step 2: Register Agent ---");
-        uint256 agentId = agentRegistry.registerAgent("ipfs://QmDemoAgentCard");
+        uint256 agentId = d.agentRegistry.registerAgent("ipfs://QmDemoAgentCard");
         console.log("Agent registered with ID:", agentId);
 
         // --- Step 3: Create Smart Wallet ---
         console.log("--- Step 3: Create Smart Wallet ---");
-        address wallet = accountFactory.createAccount(deployer, address(delegationManager), 0);
+        address wallet = d.factory.createAccount(deployer, address(d.delegationManager), 0);
         console.log("Wallet created at:", wallet);
 
         // --- Step 4: Grant Tier 1 Delegation ---
