@@ -1,4 +1,9 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/jetbrains-mono/700.css';
+@import '@fontsource/satoshi/400.css';
+@import '@fontsource/satoshi/500.css';
+@import '@fontsource/satoshi/700.css';
 @import "tailwindcss";
 
 :root {
@@ -75,8 +80,17 @@ html {
 
 .iris-pulse {
   animation: iris-pulse 3s ease-out infinite;
+  will-change: opacity;
 }
 
 .float-animation {
   animation: float 6s ease-out infinite;
+  will-change: transform;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iris-pulse,
+  .float-animation {
+    animation: none;
+  }
 }
