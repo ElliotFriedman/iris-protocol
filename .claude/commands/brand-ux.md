@@ -19,7 +19,7 @@ Full-width, 64px height. Obsidian (`#1A1A2E`) background with 4px left-edge seve
 
 **Sections (top to bottom):**
 
-1. **Agent profile strip:** Agent name (JetBrains Mono Medium, Bone). Reputation score in Cyan (e.g., `87/100`) with trend arrow. Delegation age in Ash. Background: `#22223A`.
+1. **Agent profile strip:** Agent name (JetBrains Mono Medium, Bone). Reputation score in Cyan (e.g., `87/100`) with trend arrow. Delegation age in Ash. Background: Onyx (`#22223A`).
 
 2. **Transaction block:** Human-readable description (Satoshi Medium, Bone). Data table (JetBrains Mono Regular, 14px): Target Contract, Function, Value, Estimated Gas. Contract name links in Iris purple.
 

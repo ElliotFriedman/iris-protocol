@@ -20,9 +20,20 @@ Apply when writing documentation or showing code in any visual context.
 3. Code examples where applicable
 4. Links to related pages
 
+## Code Block Styling
+
+- Background: Onyx (`#22223A`) with 1px Graphite (`#2A2A3E`) border, 8px border radius
+- Font: JetBrains Mono Regular 14px, line height 1.5
+- Do not use third-party syntax themes (Dracula, GitHub, etc.) as-is — customize to match the brand palette above
+
+## Docusaurus / Prism Integration
+
+When using Prism for syntax highlighting, override the default theme colors to match brand tokens. The dark theme base must use Onyx (`#22223A`) for the code background, not the Prism default.
+
 ## Doc Rules
 
 - No emoji in documentation
 - No colloquial language ("let's dive in", "here's the deal")
 - Start every page with a declarative statement
 - Never use serif fonts in any code or doc context
+- All code backgrounds use Onyx (`#22223A`), never Void or Obsidian

@@ -13,3 +13,8 @@ Check all assets against this list before shipping.
 - **Don't use exclamation marks** in any brand copy.
 - **Don't use emoji** in documentation or formal materials.
 - **Don't use stock images** or generic crypto graphics.
+- **Don't use unnamed hex values.** Every color in CSS must reference a named brand token. No ad-hoc colors like `#22223A` without mapping them to a brand name (that one is Onyx).
+- **Don't expose a light-mode toggle.** Dark-mode only means the user cannot switch themes.
+- **Don't use Inter** as a body font. The brand typeface for body text is Satoshi.
+- **Don't use ease-in-out animations.** Use `ease-out` or `linear` only. No bounce, spring, or elastic easing.
+- **Don't create color aliases.** Use brand names (`--obsidian`, `--onyx`) not generic names (`--charcoal`, `--charcoal-light`).
