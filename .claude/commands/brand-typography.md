@@ -34,25 +34,49 @@ Source: https://www.fontshare.com/fonts/satoshi
 
 ## Font Loading
 
-**JetBrains Mono:** Load from Google Fonts. Weights: 400, 500, 700.
+**JetBrains Mono:** Install via Fontsource (self-hosted, no external CDN):
 
+```bash
+npm install @fontsource/jetbrains-mono
 ```
-https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap
-```
-
-**Satoshi:** Load from Fontsource or self-host. Not available on Google Fonts.
-
-```
-npm install @fontsource/satoshi
-```
-
-Then import in your entry CSS:
 
 ```css
-@import '@fontsource/satoshi/400.css';
-@import '@fontsource/satoshi/500.css';
-@import '@fontsource/satoshi/700.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+@import '@fontsource/jetbrains-mono/700.css';
 ```
+
+**Satoshi:** Not available on Fontsource or Google Fonts. Self-host from Fontshare.
+
+1. Download woff2 files from https://www.fontshare.com/fonts/satoshi (weights 400, 500, 700)
+2. Place in `public/fonts/` as `satoshi-400.woff2`, `satoshi-500.woff2`, `satoshi-700.woff2`
+3. Declare `@font-face` in your entry CSS:
+
+```css
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/satoshi-400.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/satoshi-500.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Satoshi';
+  src: url('/fonts/satoshi-700.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+```
+
+**Never load fonts from external CDNs** (Google Fonts, Fontshare API). Self-host all font files to avoid tracking and render-blocking.
 
 **Never use Inter, Arial, Helvetica, or any system sans-serif as the body font.** Inter is not part of the Iris Protocol type system.
 
