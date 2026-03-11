@@ -57,4 +57,26 @@ contract FunctionSelectorEnforcerTest is Test {
         );
         _beforeHook(abi.encode(allowed), abi.encodeWithSelector(badSel, 100));
     }
+
+    function test_revertsForCalldataTooShort() public {
+        bytes4 sel = bytes4(keccak256("transfer(address,uint256)"));
+        bytes4[] memory allowed = new bytes4[](1);
+        allowed[0] = sel;
+
+        // Empty calldata
+        vm.expectRevert(FunctionSelectorEnforcer.CalldataTooShort.selector);
+        _beforeHook(abi.encode(allowed), "");
+
+        // 1 byte calldata
+        vm.expectRevert(FunctionSelectorEnforcer.CalldataTooShort.selector);
+        _beforeHook(abi.encode(allowed), hex"aa");
+
+        // 3 bytes calldata
+        vm.expectRevert(FunctionSelectorEnforcer.CalldataTooShort.selector);
+        _beforeHook(abi.encode(allowed), hex"aabbcc");
+    }
+
+    function test_afterHookIsNoop() public view {
+        enforcer.afterHook("", "", DM, HASH, DELEGATOR, REDEEMER, TARGET, 0, "");
+    }
 }

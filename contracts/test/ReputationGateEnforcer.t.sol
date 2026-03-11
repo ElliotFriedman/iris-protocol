@@ -169,16 +169,25 @@ contract ReputationGateEnforcerTest is Test {
         enforcer.beforeHook(terms, "", DM, HASH, DELEGATOR, REDEEMER, TARGET, 0, "");
     }
 
-    function test_afterHookIsNoop() public pure {
-        ReputationGateEnforcer e = ReputationGateEnforcer(address(0));
-        // afterHook is pure and performs no state changes; just verify it exists on the interface.
-        // We call it via a low-level approach to avoid needing a deployed instance for a no-op.
-        // Instead, just confirm the function signature compiles.
-        e.afterHook.selector;
+    function test_afterHookIsNoop() public view {
+        enforcer.afterHook("", "", DM, HASH, DELEGATOR, REDEEMER, TARGET, 0, "");
     }
 
     function test_exactThresholdPasses() public {
-        // Score is exactly at the minimum threshold — should pass without revert.
+        // Score is exactly at the minimum threshold -- should pass without revert.
         _beforeHook(50);
+    }
+
+    function test_invalidTermsRevertsOnBadOracle() public {
+        // Use an EOA address with no code as oracle -- staticcall will fail.
+        address badOracle = address(0xDEADBEEF);
+        bytes memory terms = abi.encode(badOracle, agentId, uint256(50));
+        vm.expectRevert(ReputationGateEnforcer.InvalidTerms.selector);
+        enforcer.beforeHook(terms, "", DM, HASH, DELEGATOR, REDEEMER, TARGET, 0, "");
+    }
+
+    function test_minScoreZeroPasses() public {
+        // Any agent should pass when minScore is 0.
+        _beforeHook(0);
     }
 }

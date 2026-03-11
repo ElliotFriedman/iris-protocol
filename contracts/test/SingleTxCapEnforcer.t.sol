@@ -35,4 +35,8 @@ contract SingleTxCapEnforcerTest is Test {
         );
         _beforeHook(abi.encode(uint256(100)), 150);
     }
+
+    function test_afterHookIsNoop() public view {
+        enforcer.afterHook(abi.encode(uint256(100)), "", DM, HASH, DELEGATOR, REDEEMER, TARGET, 50, "");
+    }
 }

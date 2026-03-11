@@ -59,4 +59,10 @@ contract ContractWhitelistEnforcerTest is Test {
         );
         _beforeHook(abi.encode(allowed), target);
     }
+
+    function test_afterHookIsNoop() public view {
+        address[] memory allowed = new address[](1);
+        allowed[0] = address(0x10);
+        enforcer.afterHook(abi.encode(allowed), "", DM, HASH, DELEGATOR, REDEEMER, address(0x10), 0, "");
+    }
 }

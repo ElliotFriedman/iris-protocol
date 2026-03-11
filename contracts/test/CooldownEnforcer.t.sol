@@ -113,4 +113,47 @@ contract CooldownEnforcerTest is Test {
             terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, THRESHOLD, ""
         );
     }
+
+    function test_afterHookRevertsForUnauthorizedCaller() public {
+        bytes memory terms = abi.encode(COOLDOWN, THRESHOLD);
+        vm.prank(address(0xBEEF));
+        vm.expectRevert(CooldownEnforcer.UnauthorizedCaller.selector);
+        enforcer.afterHook(
+            terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, 1 ether, ""
+        );
+    }
+
+    function test_afterHookValueBelowThresholdDoesNotRecord() public {
+        bytes memory terms = abi.encode(COOLDOWN, THRESHOLD);
+        // Value is exactly 1 wei below threshold
+        uint256 justBelow = THRESHOLD - 1;
+        vm.prank(DELEGATION_MANAGER);
+        enforcer.afterHook(
+            terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, justBelow, ""
+        );
+        assertEq(enforcer.lastExecution(DELEGATION_HASH), 0);
+    }
+
+    function test_afterHookValueAtExactThresholdRecords() public {
+        bytes memory terms = abi.encode(COOLDOWN, THRESHOLD);
+        vm.prank(DELEGATION_MANAGER);
+        enforcer.afterHook(
+            terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, THRESHOLD, ""
+        );
+        assertEq(enforcer.lastExecution(DELEGATION_HASH), 1000);
+    }
+
+    function test_passesAtExactCooldownBoundary() public {
+        bytes memory terms = abi.encode(COOLDOWN, THRESHOLD);
+
+        enforcer.beforeHook(terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, 1 ether, "");
+        vm.prank(DELEGATION_MANAGER);
+        enforcer.afterHook(terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, 1 ether, "");
+
+        // Warp to exactly lastExecution + cooldown = 1000 + 300 = 1300
+        vm.warp(1300);
+
+        // Should pass: block.timestamp == nextAllowed, so block.timestamp < nextAllowed is false
+        enforcer.beforeHook(terms, "", DELEGATION_MANAGER, DELEGATION_HASH, DELEGATOR, REDEEMER, TARGET, 1 ether, "");
+    }
 }

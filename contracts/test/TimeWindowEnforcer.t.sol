@@ -58,4 +58,8 @@ contract TimeWindowEnforcerTest is Test {
         vm.warp(notAfter);
         _beforeHook(abi.encode(notBefore, notAfter));
     }
+
+    function test_afterHookIsNoop() public view {
+        enforcer.afterHook(abi.encode(uint256(1000), uint256(2000)), "", DM, HASH, DELEGATOR, REDEEMER, TARGET, 0, "");
+    }
 }
