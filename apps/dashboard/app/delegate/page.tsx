@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useDemoMode } from "@/lib/demo-context";
-import { MOCK_AGENTS, TRUST_TIERS } from "@/lib/mock-data";
-import IrisAperture from "@/components/IrisAperture";
+import { useDemoMode } from "@/hooks/useDemoMode";
+import { MOCK_AGENTS } from "@/constants/mock-data";
+import { TRUST_TIERS } from "@/constants/trust-tiers";
+import IrisAperture from "@/components/ui/IrisAperture";
 
 export default function DelegatePage() {
   const { demoMode } = useDemoMode();

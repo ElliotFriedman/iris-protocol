@@ -1,32 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useDemoMode } from "@/lib/demo-context";
-import { MOCK_DELEGATIONS, MOCK_ACTIVITIES } from "@/lib/mock-data";
-import IrisAperture from "@/components/IrisAperture";
-
-function ReputationBadge({ score }: { score: number }) {
-  const color = score >= 75 ? "#00F0FF" : score >= 50 ? "#F0C000" : "#FF4444";
-  return (
-    <span className="font-mono text-sm" style={{ color }}>
-      {score}
-    </span>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    active: "bg-green-500/10 text-green-400 border-green-500/20",
-    expired: "bg-gray-500/10 text-gray-400 border-gray-500/20",
-    revoked: "bg-red-500/10 text-red-400 border-red-500/20",
-    degraded: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-  };
-  return (
-    <span className={`px-2 py-0.5 rounded text-xs font-mono border ${styles[status] || styles.active}`}>
-      {status}
-    </span>
-  );
-}
+import { useDemoMode } from "@/hooks/useDemoMode";
+import { MOCK_DELEGATIONS, MOCK_ACTIVITIES } from "@/constants/mock-data";
+import IrisAperture from "@/components/ui/IrisAperture";
+import { ReputationBadge } from "@/components/delegation/ReputationBadge";
+import { StatusBadge } from "@/components/delegation/StatusBadge";
 
 export default function Dashboard() {
   const { demoMode } = useDemoMode();

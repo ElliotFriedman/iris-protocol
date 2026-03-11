@@ -1,32 +1,10 @@
 @import '@fontsource/jetbrains-mono/400.css';
 @import '@fontsource/jetbrains-mono/500.css';
 @import '@fontsource/jetbrains-mono/700.css';
+@import '@fontsource/satoshi/400.css';
+@import '@fontsource/satoshi/500.css';
+@import '@fontsource/satoshi/700.css';
 @import "tailwindcss";
-
-/* Satoshi — self-hosted from Fontshare (not available on Fontsource/Google Fonts) */
-@font-face {
-  font-family: 'Satoshi';
-  src: url('/fonts/satoshi-400.woff2') format('woff2');
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Satoshi';
-  src: url('/fonts/satoshi-500.woff2') format('woff2');
-  font-weight: 500;
-  font-style: normal;
-  font-display: swap;
-}
-
-@font-face {
-  font-family: 'Satoshi';
-  src: url('/fonts/satoshi-700.woff2') format('woff2');
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
-}
 
 :root {
   --background: #0D0D14;

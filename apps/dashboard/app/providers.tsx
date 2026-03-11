@@ -1,8 +1,8 @@
 "use client";
 
 import { ReactNode } from "react";
-import { DemoProvider } from "@/lib/demo-context";
-import Header from "@/components/Header";
+import { DemoProvider } from "@/hooks/useDemoMode";
+import Header from "@/components/layout/Header";
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
