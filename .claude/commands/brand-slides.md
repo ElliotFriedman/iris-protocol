@@ -12,7 +12,7 @@ Apply when creating pitch deck or presentation slides.
 
 ## Code on Slides
 
-JetBrains Mono Regular on Obsidian (`#1A1A2E`) with 1px Graphite border. Syntax: Cyan for types, Iris for keywords, Mint for strings.
+JetBrains Mono Regular on Onyx (`#22223A`) with 1px Graphite border. Syntax: Cyan for types, Iris for keywords, Mint for strings.
 
 ## Data/Metrics
 
