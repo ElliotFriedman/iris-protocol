@@ -1,187 +1,161 @@
 # Iris Protocol
 
-> Privy, but trustless. Embedded agent wallets where every permission lives onchain.
+**Trustless payment infrastructure for AI agents.**
 
-Iris gives AI agents their own smart contract wallets with **configurable trust levels** enforced entirely onchain. No TEEs. No key custodians. No offchain policy engines. You configure the iris — from fully closed (human approves everything) to wide open (agent operates autonomously within bounds).
+Onchain embedded wallets with ERC-7710 delegation, configurable trust tiers, and reputation-gated permissions via ERC-8004.
+
+> "Every competitor gives agents a wallet. Iris Protocol gives them a leash — one that loosens as they prove themselves trustworthy."
 
 ## The Problem
 
-Embedded wallet providers (Privy, Turnkey, Dynamic) require trusting a company with key shards, TEEs, and offchain policy engines. For AI agents operating with real economic value, these trust assumptions are unacceptable. The alternative — giving agents raw private keys — is worse.
+AI agents need to transact, but today's options are broken:
+- **Full wallet access** — catastrophic risk ($47K lost to one recursive agent loop)
+- **Locked out entirely** — agents can't do their job
+- **Custodial wallets** (Privy, Turnkey) — trust a company with your keys
 
-## How It Works
+42% of consumers fear losing control over AI purchases. 97% of CFOs understand agent autonomy — only 11% are testing it. **Trust is the bottleneck.**
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  Layer 4: Identity         IrisAgentRegistry             │
-│                            IrisReputationOracle          │
-├─────────────────────────────────────────────────────────┤
-│  Layer 3: Enforcement      SpendingCap │ Whitelist       │
-│                            Selector │ TimeWindow         │
-│                            SingleTxCap │ Cooldown        │
-│                            ReputationGate (novel)        │
-├─────────────────────────────────────────────────────────┤
-│  Layer 2: Delegation       IrisDelegationManager         │
-│                            ERC-7710 + EIP-712            │
-├─────────────────────────────────────────────────────────┤
-│  Layer 1: Accounts         IrisAccount (ERC-4337)        │
-│                            IrisAccountFactory (CREATE2)  │
-└─────────────────────────────────────────────────────────┘
-```
+## The Solution
 
-### Trust Tiers
+Iris Protocol creates a middle ground: **delegated authority with enforceable limits.**
 
-| Tier | Name | Aperture | What the agent can do |
-|------|------|----------|----------------------|
-| 0 | View Only | Closed | Read balances, simulate transactions. Cannot execute. |
-| 1 | Supervised | Narrow | Spend up to $X/day on whitelisted contracts within time window. Excess requires co-signature. |
-| 2 | Autonomous | Wide | Higher caps, broader whitelist, reputation-gated. SingleTxCap + Cooldown enforced. |
-| 3 | Full Delegation | Open | Maximum autonomy. Emergency revocation. Weekly spending cap. |
+Agents get onchain wallets with smart contract-enforced permissions. No custodian. No admin keys. Every permission verifiable onchain.
 
-### ERC Stack
-
-| Standard | Role in Iris |
-|----------|-------------|
-| **ERC-4337** | Agent wallets are smart contract accounts with UserOp execution |
-| **ERC-7710** | Core permission primitive — delegations with caveat enforcers |
-| **ERC-7715** | Standard for agents to request scoped permissions |
-| **ERC-8004** | Agent identity + reputation registry |
-| **ERC-8128** | Signed HTTP authentication for agents |
-| **EIP-7702** | EOA upgrade path to smart accounts |
-
-### The Novel Piece: ReputationGateEnforcer
-
-A caveat enforcer that queries ERC-8004's Reputation Registry in real-time. If an agent's reputation drops below threshold, its delegations stop working — across all wallets. A network-level immune system for agent misbehavior.
+## Architecture
 
 ```
-Agent reputation drops → ReputationGateEnforcer blocks beforeHook
-→ Delegation fails → All wallets with that agent are protected
-→ No manual revocation needed
+┌─────────────────────────────────────────────────┐
+│                   Human Owner                     │
+│              (ERC-4337 Smart Account)             │
+└──────────────────────┬──────────────────────────┘
+                       │ ERC-7710 Delegation
+                       ▼
+┌─────────────────────────────────────────────────┐
+│              IrisDelegationManager                │
+│         (validates signatures + caveats)          │
+└──────────────────────┬──────────────────────────┘
+                       │ Caveat Enforcement
+                       ▼
+┌─────────────────────────────────────────────────┐
+│            7 Caveat Enforcers (composable)        │
+│  ┌────────────┐ ┌────────────┐ ┌──────────────┐ │
+│  │ SpendingCap│ │SingleTxCap │ │ContractWhite-│ │
+│  │            │ │            │ │  list        │ │
+│  └────────────┘ └────────────┘ └──────────────┘ │
+│  ┌────────────┐ ┌────────────┐ ┌──────────────┐ │
+│  │FunctionSel-│ │ TimeWindow │ │  Cooldown    │ │
+│  │  ector     │ │            │ │              │ │
+│  └────────────┘ └────────────┘ └──────────────┘ │
+│  ┌──────────────────────────────────────────────┐│
+│  │     ReputationGateEnforcer (ERC-8004)        ││
+│  │     "Network-level immune system"            ││
+│  └──────────────────────────────────────────────┘│
+└──────────────────────┬──────────────────────────┘
+                       │ Authorized Action
+                       ▼
+┌─────────────────────────────────────────────────┐
+│                  AI Agent                         │
+│         (operates within delegation scope)        │
+└─────────────────────────────────────────────────┘
 ```
 
-## Hyperstructure Properties
+## Trust Tiers
 
-The core protocol (DelegationManager, Account, all caveat enforcers, AgentRegistry, ApprovalQueue) is a **hyperstructure**:
+| Tier | Name | Iris State | Permissions | Use Case |
+|------|------|-----------|-------------|----------|
+| 0 | View Only | Closed | Read state, no execution | Monitoring |
+| 1 | Supervised | Narrow | $100/day, approved contracts, reputation >= 50 | Shopping agents |
+| 2 | Autonomous | Wide | $1,000/day, broader access, reputation >= 75 | DeFi agents |
+| 3 | Full Delegation | Open | $10,000/week, max autonomy, reputation >= 90 | Enterprise agents |
 
-| Property | Status |
-|----------|--------|
-| **Unstoppable** | No pause/freeze mechanisms. Immutable contracts. |
-| **Free** | Zero protocol fees on any operation. |
-| **Permissionless** | Anyone can deploy accounts, register agents, create delegations. |
-| **Credibly neutral** | No privileged actors in core protocol. |
-| **No upgrades** | No proxy patterns. No delegatecall. No UUPS. |
+**Trust is earned, not assumed.** Agents start restricted and graduate through onchain reputation.
 
-**Trust assumption:** `IrisReputationOracle` uses `Ownable` — the oracle owner can submit feedback and add reviewers. This is the only centralization point, intentional for reputation bootstrapping. The core delegation enforcement is fully trustless.
+## Standards
 
-## Demo
+| Standard | Role | Origin |
+|----------|------|--------|
+| [ERC-7710](https://eips.ethereum.org/EIPS/eip-7710) | Onchain delegation framework | MetaMask |
+| [ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) | Agent identity and reputation | EF dAI team |
+| [ERC-4337](https://eips.ethereum.org/EIPS/eip-4337) | Account abstraction | Ethereum |
+| [EIP-712](https://eips.ethereum.org/EIPS/eip-712) | Typed data signing | Ethereum |
 
-1. **Agent registers** on ERC-8004 Identity Registry → gets agentId NFT
-2. **User creates an Iris wallet** → smart account with delegation support
-3. **Agent requests Tier 1 access** → user sees: "Agent #4521 (reputation: 60/100) requests: spend up to $100/day on Uniswap only, valid 7 days"
-4. **User approves** → signs ERC-7710 delegation with caveats
-5. **Agent executes a $50 swap** → caveats pass → transaction succeeds
-6. **Agent attempts a $200 swap** → SpendingCapEnforcer blocks → queued for approval
-7. **User bumps agent to Tier 2** → new delegation with higher cap
-8. **Reputation drop** → ReputationGateEnforcer blocks next execution
-9. **User revokes** → instant termination
+## Novel Contribution: ReputationGateEnforcer
 
-## Deployed Contracts
+The first caveat enforcer that queries live ERC-8004 reputation scores at execution time. When an agent misbehaves:
 
-| Contract | Base Sepolia |
-|----------|-------------|
-| IrisDelegationManager | TBD |
-| IrisAccountFactory | TBD |
-| IrisAgentRegistry | TBD |
-| IrisReputationOracle | TBD |
-| SpendingCapEnforcer | TBD |
-| ContractWhitelistEnforcer | TBD |
-| FunctionSelectorEnforcer | TBD |
-| TimeWindowEnforcer | TBD |
-| SingleTxCapEnforcer | TBD |
-| CooldownEnforcer | TBD |
-| ReputationGateEnforcer | TBD |
-| IrisApprovalQueue | TBD |
+1. Reputation drops via oracle feedback
+2. ALL delegations using ReputationGateEnforcer auto-block the agent
+3. No manual revocation required
+4. Network heals itself
 
-## Run Locally
+**A self-healing trust network at the protocol level.**
 
-```bash
-git clone https://github.com/iris-protocol/iris-protocol
-cd iris-protocol
+## Security
 
-# Build and test contracts
-cd contracts
-forge install && forge build && forge test
-
-# Deploy to local Anvil
-anvil &
-forge script script/DeployLocal.s.sol --rpc-url http://127.0.0.1:8545 --broadcast
-
-# Run E2E tests (TypeScript + viem against local Anvil)
-cd ../e2e
-./run.sh
-
-# Run landing page
-cd ../apps/landing
-pnpm install && pnpm dev
-
-# Run dashboard
-cd ../apps/dashboard
-pnpm install && pnpm dev
-```
+- **152 tests** across unit, integration, and multi-agent scenarios
+- **53 symbolic proofs** via Halmos formal verification across 10 test suites
+- **TOCTOU vulnerability** identified and fixed in SpendingCap/CooldownEnforcer
+- **4 defense layers**: Account -> Delegation -> Caveat -> Reputation
+- **Hyperstructure**: no pause, no fees, no admin keys, no proxies
 
 ## Project Structure
 
 ```
 iris-protocol/
-├── contracts/                    # Foundry project
-│   ├── src/
-│   │   ├── IrisAccount.sol               # ERC-4337 smart account
-│   │   ├── IrisAccountFactory.sol        # CREATE2 factory
-│   │   ├── IrisDelegationManager.sol     # ERC-7710 delegation lifecycle
-│   │   ├── IrisApprovalQueue.sol         # Approval queue for over-limit txs
-│   │   ├── caveats/
-│   │   │   ├── SpendingCapEnforcer.sol
-│   │   │   ├── ContractWhitelistEnforcer.sol
-│   │   │   ├── FunctionSelectorEnforcer.sol
-│   │   │   ├── TimeWindowEnforcer.sol
-│   │   │   ├── SingleTxCapEnforcer.sol
-│   │   │   ├── CooldownEnforcer.sol
-│   │   │   └── ReputationGateEnforcer.sol  # Novel contribution
-│   │   ├── identity/
-│   │   │   ├── IrisAgentRegistry.sol       # ERC-8004 identity
-│   │   │   └── IrisReputationOracle.sol    # Reputation scores
-│   │   ├── presets/
-│   │   │   ├── TierOne.sol                 # Supervised preset
-│   │   │   ├── TierTwo.sol                 # Autonomous preset
-│   │   │   └── TierThree.sol              # Full delegation preset
-│   │   └── deployers/
-│   │       └── IrisDeployer.sol            # Shared deployment fixture
-│   ├── test/                               # 158 tests, 0 failures
-│   │   ├── integration/                    # 7 integration test suites
-│   │   └── helpers/
-│   │       └── IrisTestBase.sol            # Shared test base (uses IrisDeployer)
-│   └── script/
-│       ├── Deploy.s.sol                    # Production deploy (uses IrisDeployer)
-│       ├── DeployLocal.s.sol               # Local Anvil deploy
-│       └── Demo.s.sol                      # Demo script
+├── contracts/           # Foundry project (Solidity 0.8.28)
+│   ├── src/             # 22 source contracts
+│   │   ├── caveats/     # 7 composable caveat enforcers
+│   │   ├── identity/    # ERC-8004 agent registry + reputation oracle
+│   │   ├── presets/     # Trust tier presets (Tier 1-3)
+│   │   └── deployers/   # Shared deployment fixture
+│   ├── test/            # 152 tests (unit + integration + formal)
+│   │   ├── formal/      # 53 Halmos symbolic proofs (10 suites)
+│   │   └── integration/ # 7 integration test suites
+│   └── script/          # Deployment scripts
 ├── apps/
-│   ├── landing/                            # Next.js landing page
-│   └── dashboard/                          # Next.js dashboard
-├── e2e/                                    # E2E tests (viem + vitest + Anvil)
-└── docs/                                   # Docusaurus documentation
+│   ├── dashboard/       # Next.js agent management UI
+│   └── landing/         # Next.js landing page + pitch deck
+├── docs/                # Docusaurus documentation
+└── e2e/                 # End-to-end tests (viem + vitest + Anvil)
 ```
 
-## Architecture Decisions
+## Quick Start
 
-**Shared deployment fixture:** `IrisDeployer.sol` is used by both deploy scripts and integration tests, guaranteeing tests exercise the exact same deployment path as mainnet.
+```bash
+# Clone
+git clone --recursive https://github.com/ElliotFriedman/iris-protocol.git
+cd iris-protocol
 
-**Composable caveats:** All 7 caveat enforcers are independent, stateless (except SpendingCap and Cooldown which track per-delegation state), and compose via AND-logic. Any combination works.
+# Build contracts
+cd contracts && forge build
 
-**No token:** Iris has no governance token. Pure infrastructure.
+# Run tests
+forge test -vvv
 
-## Built With
+# Start dashboard
+cd ../apps/dashboard && pnpm install && pnpm dev
 
-Base | MetaMask Delegation Toolkit (ERC-7710) | ERC-8004 Registry | Foundry | OpenZeppelin
+# Start landing page
+cd ../apps/landing && pnpm install && pnpm dev
+```
 
-## Team
+## Links
 
-**Elliot** — Smart contract engineer. 67+ contracts deployed, $2B+ TVL secured, zero losses. Stanford Blockchain Review. Founder, Kleidi Wallet.
+- [Demo Dashboard](./apps/dashboard/) — Configure trust tiers and manage agent delegations
+- [Landing Page](./apps/landing/) — Project overview and pitch deck at /deck
+- [Documentation](./docs/) — Full technical docs
+- [Contracts](./contracts/src/) — Solidity source code
+
+## Hackathon Tracks
+
+**Agents that Pay** — Transparent scoping of agent spending, verification that spending is correct, settlement without middlemen.
+
+**Agents that Trust** — Decentralized identity for entities without faces. ERC-8004 agent identity can't be revoked by a centralized provider.
+
+## Built by
+
+**Elliot** — Smart contract security and infrastructure. 67+ contracts deployed, $2B+ TVL secured, 0 security incidents. Stanford Blockchain Review contributor.
+
+---
+
+*Built for [The Synthesis](https://synthesis.md/) 2026*
