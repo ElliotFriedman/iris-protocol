@@ -2,23 +2,11 @@
 
 import { use } from "react";
 import Link from "next/link";
-import { useDemoMode } from "@/lib/demo-context";
-import { MOCK_DELEGATIONS, MOCK_ACTIVITIES, TRUST_TIERS } from "@/lib/mock-data";
-import IrisAperture from "@/components/IrisAperture";
-
-function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    active: "bg-green-500/10 text-green-400 border-green-500/20",
-    expired: "bg-gray-500/10 text-gray-400 border-gray-500/20",
-    revoked: "bg-red-500/10 text-red-400 border-red-500/20",
-    degraded: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-  };
-  return (
-    <span className={`px-3 py-1 rounded-full text-xs font-mono border ${styles[status] || styles.active}`}>
-      {status}
-    </span>
-  );
-}
+import { useDemoMode } from "@/hooks/useDemoMode";
+import { MOCK_DELEGATIONS, MOCK_ACTIVITIES } from "@/constants/mock-data";
+import { TRUST_TIERS } from "@/constants/trust-tiers";
+import IrisAperture from "@/components/ui/IrisAperture";
+import { StatusBadge } from "@/components/delegation/StatusBadge";
 
 export default function DelegationDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -63,7 +51,7 @@ export default function DelegationDetailPage({ params }: { params: Promise<{ id:
           <div>
             <div className="flex items-center gap-3">
               <h1 className="font-mono text-2xl font-bold text-white">{delegation.agentName}</h1>
-              <StatusBadge status={delegation.status} />
+              <StatusBadge status={delegation.status} variant="pill" />
             </div>
             <p className="font-mono text-sm text-gray-500">{delegation.agentAddress}</p>
           </div>
