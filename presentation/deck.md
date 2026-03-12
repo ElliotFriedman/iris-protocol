@@ -10,7 +10,7 @@ $3–5 trillion in projected agent transactions by 2030 — and almost no one tr
 
 <!-- Worldpay survey of 8,000 consumers across 7 countries. McKinsey agent economy projection. -->
 <!-- Speaker: Open with the number. Pause. The gap between market scale and consumer trust is where fraud happens. Slide 2 shows what that looks like in practice. -->
-<!-- Judge notes — Illia Polosukhin: No token. No speculation. Practical infrastructure solving a real problem today. Working system with 152 tests, formal proofs, dashboard, and landing page. -->
+<!-- Judge notes — Illia Polosukhin: No token. No speculation. Practical infrastructure solving a real problem today. Working system with 233 tests, formal proofs, dashboard, and landing page. -->
 
 ---
 
@@ -115,12 +115,12 @@ Seven independent caveat enforcers. Each one is a separate security boundary:
 6. **CooldownEnforcer** — mandatory delays between high-value transactions
 7. **ReputationGateEnforcer** — dynamic reputation-based access
 
-152 passing tests. 53 Halmos symbolic proofs verifying invariants hold for ALL possible inputs. Reentrancy protection. Full chain enforcement. Stateful enforcer caller verification.
+233 passing tests. 74 Halmos symbolic proofs verifying invariants hold for ALL possible inputs. Reentrancy protection. Full chain enforcement. Stateful enforcer caller verification.
 
 Not a hackathon prototype. Production-grade infrastructure.
 
 <!-- Speaker: "We built seven independent layers. To compromise an Iris delegation, you'd need to bypass all of them simultaneously. 53 formal proofs verify these invariants hold for every possible input — not just the ones we tested." -->
-<!-- Judge notes — Tomasz Stanczak: Emphasize institutional-grade quality. 152 tests + 53 formal proofs. Ethereum as the agent settlement layer. This is the kind of infrastructure Nethermind would deploy. -->
+<!-- Judge notes — Tomasz Stanczak: Emphasize institutional-grade quality. 233 tests + 53 formal proofs. Ethereum as the agent settlement layer. This is the kind of infrastructure Nethermind would deploy. -->
 <!-- Judge notes — Austin Griffith: Composability is key. Each enforcer is independent, importable, composable via AND-logic. Clean DX — import TierOne.sol, call configureTierOne(), get a ready-made caveat array. Pure Foundry tooling. -->
 
 ---
@@ -184,7 +184,7 @@ Privy, but trustless. Embedded agent wallets where every permission lives onchai
 
 - 7 caveat enforcers, composable and independent
 - Dynamic reputation-gated access via ERC-8004
-- 152 tests. 53 formal proofs. Zero failures.
+- 233 tests. 53 formal proofs. Zero failures.
 - Full documentation, dashboard, and landing page
 
 Give your agent a wallet. Keep the keys.

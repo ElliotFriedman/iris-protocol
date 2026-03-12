@@ -162,6 +162,81 @@ contract IrisDelegationManagerFV is Test {
     }
 
     // =========================================================================
+    // Invariant: domain separator is address-specific (EIP-712 verifyingContract)
+    // =========================================================================
+
+    /// @notice Proves: two IrisDelegationManager instances at different addresses
+    /// produce different domain separators, confirming EIP-712 includes verifyingContract.
+    function check_domainSeparator_addressSpecific() public {
+        bytes32 sep1 = dm.domainSeparator();
+
+        IrisDelegationManager dm2 = new IrisDelegationManager();
+        bytes32 sep2 = dm2.domainSeparator();
+
+        // Different contract addresses must yield different domain separators
+        assert(sep1 != sep2);
+        // Both must be non-zero
+        assert(sep1 != bytes32(0));
+        assert(sep2 != bytes32(0));
+    }
+
+    // =========================================================================
+    // Invariant: type hash constants are non-zero and deterministic
+    // =========================================================================
+
+    /// @notice Proves: DELEGATION_TYPEHASH is non-zero and consistent across calls.
+    function check_delegationTypeHash_nonZero() public view {
+        bytes32 th1 = dm.DELEGATION_TYPEHASH();
+        bytes32 th2 = dm.DELEGATION_TYPEHASH();
+        assert(th1 != bytes32(0));
+        assert(th1 == th2);
+    }
+
+    /// @notice Proves: CAVEAT_TYPEHASH is non-zero and consistent across calls.
+    function check_caveatTypeHash_nonZero() public view {
+        bytes32 th1 = dm.CAVEAT_TYPEHASH();
+        bytes32 th2 = dm.CAVEAT_TYPEHASH();
+        assert(th1 != bytes32(0));
+        assert(th1 == th2);
+    }
+
+    /// @notice Proves: DELEGATION_TYPEHASH and CAVEAT_TYPEHASH are distinct.
+    function check_typeHashes_distinct() public view {
+        assert(dm.DELEGATION_TYPEHASH() != dm.CAVEAT_TYPEHASH());
+    }
+
+    // =========================================================================
+    // Invariant: hash is sensitive to all struct fields
+    // =========================================================================
+
+    /// @notice Proves: different authority addresses produce different hashes.
+    function check_hashUniqueness_authority(address a1, address a2) public view {
+        vm.assume(a1 != a2);
+
+        Caveat[] memory caveats = new Caveat[](0);
+        Delegation memory del1 = Delegation({
+            delegator: address(0x1),
+            delegate: address(0x2),
+            authority: a1,
+            caveats: caveats,
+            salt: 0,
+            signature: ""
+        });
+        Delegation memory del2 = Delegation({
+            delegator: address(0x1),
+            delegate: address(0x2),
+            authority: a2,
+            caveats: caveats,
+            salt: 0,
+            signature: ""
+        });
+
+        bytes32 hash1 = this._getHash(del1);
+        bytes32 hash2 = this._getHash(del2);
+        assert(hash1 != hash2);
+    }
+
+    // =========================================================================
     // Supplementary: revocation/redemption tested via concrete Foundry tests
     // =========================================================================
     // The following invariants are proven by the existing Foundry test suite

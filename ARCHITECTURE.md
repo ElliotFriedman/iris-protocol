@@ -57,7 +57,7 @@ Pre-configured caveat combinations that map to human-interpretable trust levels:
 - **No proxy patterns.** All contracts are immutable after deployment.
 - **No protocol fees.** Zero rent-seeking on any operation.
 - **Shared deployment fixture.** `IrisDeployer.sol` is used by both deploy scripts and tests, guaranteeing identical deployment paths.
-- **Formal verification.** 53 Halmos symbolic proofs covering all enforcers, the delegation manager, and the account contract.
+- **Formal verification.** 74 Halmos symbolic proofs covering all enforcers, the delegation manager, and the account contract.
 
 ## Detailed Documentation
 

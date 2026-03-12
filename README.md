@@ -92,7 +92,7 @@ The first caveat enforcer that queries live ERC-8004 reputation scores at execut
 
 ## Security
 
-- **152 tests** across unit, integration, and multi-agent scenarios
+- **233 tests** across unit, integration, and multi-agent scenarios
 - **53 symbolic proofs** via Halmos formal verification across 10 test suites
 - **TOCTOU vulnerability** identified and fixed in SpendingCap/CooldownEnforcer
 - **4 defense layers**: Account -> Delegation -> Caveat -> Reputation
@@ -108,8 +108,8 @@ iris-protocol/
 │   │   ├── identity/    # ERC-8004 agent registry + reputation oracle
 │   │   ├── presets/     # Trust tier presets (Tier 1-3)
 │   │   └── deployers/   # Shared deployment fixture
-│   ├── test/            # 152 tests (unit + integration + formal)
-│   │   ├── formal/      # 53 Halmos symbolic proofs (10 suites)
+│   ├── test/            # 233 tests (unit + integration + formal)
+│   │   ├── formal/      # 74 Halmos symbolic proofs (10 suites)
 │   │   └── integration/ # 7 integration test suites
 │   └── script/          # Deployment scripts
 ├── apps/

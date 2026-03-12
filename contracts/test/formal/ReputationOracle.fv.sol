@@ -143,4 +143,143 @@ contract ReputationOracleFV is Test {
             assert(false); // Must revert for unregistered agent
         } catch {}
     }
+
+    // =========================================================================
+    // Gap 1: Arithmetic consistency across multiple mixed feedbacks
+    // =========================================================================
+
+    /// @notice Proves: after P positive and N negative feedbacks, the score matches
+    /// the expected formula: max(0, min(100, 50 + 2*P - 5*N)).
+    /// Uses small bounded values to keep Halmos loop unrolling manageable.
+    function check_score_mixedFeedbackConsistency(uint8 positives, uint8 negatives) public {
+        vm.assume(positives <= 5);
+        vm.assume(negatives <= 5);
+        uint256 agentId = 1;
+
+        // Submit positive feedbacks
+        for (uint256 i = 0; i < positives; i++) {
+            vm.prank(ORACLE_OWNER);
+            oracle.submitFeedback(agentId, true);
+        }
+
+        // Submit negative feedbacks
+        for (uint256 i = 0; i < negatives; i++) {
+            vm.prank(ORACLE_OWNER);
+            oracle.submitFeedback(agentId, false);
+        }
+
+        uint256 score = oracle.getReputationScore(agentId);
+        assert(score <= 100);
+
+        // Compute expected score step by step (matching contract logic)
+        uint256 expected = 50;
+        for (uint256 i = 0; i < positives; i++) {
+            expected = expected + 2 > 100 ? 100 : expected + 2;
+        }
+        for (uint256 i = 0; i < negatives; i++) {
+            expected = expected < 5 ? 0 : expected - 5;
+        }
+        assert(score == expected);
+    }
+
+    // =========================================================================
+    // Gap 2: Score lower bound — negative feedback cannot go below 0
+    // =========================================================================
+
+    /// @notice Proves: even with maximum negative feedbacks, score never underflows.
+    /// Starting from 50, after 11 negative feedbacks: 50 - 55 = floored at 0.
+    function check_score_cannotUnderflow() public {
+        uint256 agentId = 1;
+
+        // 11 negative feedbacks: 50 → 45 → 40 → 35 → 30 → 25 → 20 → 15 → 10 → 5 → 0 → 0
+        for (uint256 i = 0; i < 11; i++) {
+            vm.prank(ORACLE_OWNER);
+            oracle.submitFeedback(agentId, false);
+        }
+
+        uint256 score = oracle.getReputationScore(agentId);
+        assert(score == 0);
+
+        // One more negative feedback — should stay at 0
+        vm.prank(ORACLE_OWNER);
+        oracle.submitFeedback(agentId, false);
+        score = oracle.getReputationScore(agentId);
+        assert(score == 0);
+    }
+
+    // =========================================================================
+    // Gap 3: First feedback initialization
+    // =========================================================================
+
+    /// @notice Proves: the first positive feedback on a fresh agent results in score 52
+    /// (initialized to 50, then +2).
+    function check_score_firstPositiveFeedback() public {
+        uint256 agentId = 1;
+        // Before any feedback, score is 50 (lazy default)
+        assert(oracle.getReputationScore(agentId) == 50);
+
+        vm.prank(ORACLE_OWNER);
+        oracle.submitFeedback(agentId, true);
+
+        assert(oracle.getReputationScore(agentId) == 52);
+    }
+
+    /// @notice Proves: the first negative feedback on a fresh agent results in score 45
+    /// (initialized to 50, then -5).
+    function check_score_firstNegativeFeedback() public {
+        uint256 agentId = 1;
+        assert(oracle.getReputationScore(agentId) == 50);
+
+        vm.prank(ORACLE_OWNER);
+        oracle.submitFeedback(agentId, false);
+
+        assert(oracle.getReputationScore(agentId) == 45);
+    }
+
+    // =========================================================================
+    // Gap 4: Score cap — positive feedback cannot exceed 100
+    // =========================================================================
+
+    /// @notice Proves: score cannot exceed 100 even after many positive feedbacks.
+    /// Starting from 50, after 26 positive feedbacks: 50 + 52 = capped at 100.
+    function check_score_cannotExceed100() public {
+        uint256 agentId = 1;
+
+        // 26 positive feedbacks: 50 + 52 = 102, but capped at 100
+        // Actually: 50 → 52 → ... → 100 → 100 → 100
+        for (uint256 i = 0; i < 26; i++) {
+            vm.prank(ORACLE_OWNER);
+            oracle.submitFeedback(agentId, true);
+        }
+
+        uint256 score = oracle.getReputationScore(agentId);
+        assert(score == 100);
+
+        // One more — should stay at 100
+        vm.prank(ORACLE_OWNER);
+        oracle.submitFeedback(agentId, true);
+        score = oracle.getReputationScore(agentId);
+        assert(score == 100);
+    }
+
+    // =========================================================================
+    // Gap 5: Recovery from zero
+    // =========================================================================
+
+    /// @notice Proves: an agent at score 0 can recover via positive feedback.
+    function check_score_recoveryFromZero() public {
+        uint256 agentId = 1;
+
+        // Drive score to 0: 50 - 50 = 0 (10 negative feedbacks)
+        for (uint256 i = 0; i < 10; i++) {
+            vm.prank(ORACLE_OWNER);
+            oracle.submitFeedback(agentId, false);
+        }
+        assert(oracle.getReputationScore(agentId) == 0);
+
+        // Recover with positive feedback: 0 → 2
+        vm.prank(ORACLE_OWNER);
+        oracle.submitFeedback(agentId, true);
+        assert(oracle.getReputationScore(agentId) == 2);
+    }
 }

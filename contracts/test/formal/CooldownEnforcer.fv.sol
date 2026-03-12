@@ -111,4 +111,106 @@ contract CooldownEnforcerFV is Test {
             assert(false);
         } catch {}
     }
+
+    // =========================================================================
+    // Invariant 5: Per-hash independence
+    // =========================================================================
+
+    /// @notice Proves: cooldown timers are independent per delegation hash.
+    function check_cooldown_hashIndependence(
+        uint256 cooldownPeriod,
+        uint256 valueThreshold,
+        uint256 value,
+        bytes32 hashA,
+        bytes32 hashB,
+        uint256 timestamp
+    ) public {
+        vm.assume(cooldownPeriod > 0);
+        vm.assume(value >= valueThreshold);
+        vm.assume(hashA != hashB);
+        vm.assume(timestamp > 0);
+        vm.assume(timestamp + cooldownPeriod >= timestamp); // no overflow
+
+        bytes memory terms = abi.encode(cooldownPeriod, valueThreshold);
+
+        // Execute and record cooldown for hashA
+        vm.warp(timestamp);
+        vm.prank(DM);
+        enforcer.afterHook(terms, "", address(0), hashA, address(0), address(0), address(0), value, "");
+
+        // hashA is now in cooldown
+        assert(enforcer.lastExecution(hashA) == timestamp);
+        // hashB should be unaffected
+        assert(enforcer.lastExecution(hashB) == 0);
+
+        // hashB should pass beforeHook even though hashA is in cooldown
+        enforcer.beforeHook(terms, "", address(0), hashB, address(0), address(0), address(0), value, "");
+    }
+
+    // =========================================================================
+    // Invariant 6: Timer monotonic update
+    // =========================================================================
+
+    /// @notice Proves: afterHook updates lastExecution to the current block.timestamp,
+    /// which is always >= the previous value (time moves forward).
+    function check_cooldown_timerMonotonicUpdate(
+        uint256 cooldownPeriod,
+        uint256 valueThreshold,
+        uint256 value,
+        bytes32 delegationHash,
+        uint256 t1,
+        uint256 t2
+    ) public {
+        vm.assume(cooldownPeriod > 0);
+        vm.assume(value >= valueThreshold);
+        vm.assume(t1 > 0);
+        vm.assume(t2 >= t1 + cooldownPeriod); // past cooldown so we can execute again
+        vm.assume(t1 + cooldownPeriod >= t1); // no overflow
+
+        bytes memory terms = abi.encode(cooldownPeriod, valueThreshold);
+
+        // First execution at t1
+        vm.warp(t1);
+        vm.prank(DM);
+        enforcer.afterHook(terms, "", address(0), delegationHash, address(0), address(0), address(0), value, "");
+        uint256 last1 = enforcer.lastExecution(delegationHash);
+        assert(last1 == t1);
+
+        // Second execution at t2 (past cooldown)
+        vm.warp(t2);
+        vm.prank(DM);
+        enforcer.afterHook(terms, "", address(0), delegationHash, address(0), address(0), address(0), value, "");
+        uint256 last2 = enforcer.lastExecution(delegationHash);
+        assert(last2 == t2);
+        assert(last2 >= last1); // monotonic
+    }
+
+    // =========================================================================
+    // Invariant 7: Below-threshold does not update lastExecution
+    // =========================================================================
+
+    /// @notice Proves: afterHook does not update lastExecution when value < threshold.
+    function check_cooldown_belowThresholdNoUpdate(
+        uint256 cooldownPeriod,
+        uint256 valueThreshold,
+        uint256 value,
+        bytes32 delegationHash,
+        uint256 timestamp
+    ) public {
+        vm.assume(cooldownPeriod > 0);
+        vm.assume(valueThreshold > 0);
+        vm.assume(value < valueThreshold);
+        vm.assume(timestamp > 0);
+
+        bytes memory terms = abi.encode(cooldownPeriod, valueThreshold);
+
+        uint256 lastBefore = enforcer.lastExecution(delegationHash);
+
+        vm.warp(timestamp);
+        vm.prank(DM);
+        enforcer.afterHook(terms, "", address(0), delegationHash, address(0), address(0), address(0), value, "");
+
+        uint256 lastAfter = enforcer.lastExecution(delegationHash);
+        assert(lastAfter == lastBefore); // unchanged
+    }
 }

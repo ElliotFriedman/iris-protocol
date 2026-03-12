@@ -95,6 +95,27 @@ contract IrisAccountFV is Test {
     }
 
     // =========================================================================
+    // Invariant: revocation is isolated across hashes (cross-hash monotonicity)
+    // =========================================================================
+
+    /// @notice Proves: revoking one hash does not affect the validity of another hash.
+    function check_revocation_crossHashIsolation(bytes32 hash1, bytes32 hash2) public {
+        vm.assume(hash1 != hash2);
+
+        // Revoke hash1
+        vm.prank(OWNER);
+        account.revokeDelegation(hash1);
+        assert(account.isDelegationValid(hash1) == false);
+        assert(account.isDelegationValid(hash2) == true); // hash2 unaffected
+
+        // Revoke hash2
+        vm.prank(OWNER);
+        account.revokeDelegation(hash2);
+        assert(account.isDelegationValid(hash1) == false); // hash1 still revoked
+        assert(account.isDelegationValid(hash2) == false);
+    }
+
+    // =========================================================================
     // Non-vacuity: prove the contract actually works (not trivially reverting)
     // =========================================================================
 

@@ -29,10 +29,10 @@ Iris Protocol is trustless payment infrastructure for AI agents. Instead of givi
 "This is pure infrastructure — no token, no speculation. Practical tooling that any agent framework can use today. Your thesis that 'AI is the front end, blockchain is the back end' is exactly what we've built."
 
 ### If Austin Griffith (EF dev/acc) is judging:
-"Built with Foundry, 152 passing tests plus 53 Halmos symbolic proofs, open source. ERC-7710 delegation from MetaMask's framework, composed with ERC-8004. It's scaffold-eth energy applied to agent infrastructure."
+"Built with Foundry, 233 passing tests plus 74 Halmos symbolic proofs, open source. ERC-7710 delegation from MetaMask's framework, composed with ERC-8004. It's scaffold-eth energy applied to agent infrastructure."
 
 ### If Tomasz Stanczak (Nethermind) is judging:
-"152 tests plus 53 Halmos symbolic proofs, TOCTOU vulnerability found and fixed, defense in depth with 7 independent caveat enforcers. This is institutional-grade infrastructure, not a hackathon prototype."
+"233 tests plus 74 Halmos symbolic proofs, TOCTOU vulnerability found and fixed, defense in depth with 7 independent caveat enforcers. This is institutional-grade infrastructure, not a hackathon prototype."
 
 ## Market Data
 - Agentic AI market: $7.29B (2025) → $139.19B (2034) at 40.5% CAGR
@@ -45,7 +45,7 @@ Iris Protocol is trustless payment infrastructure for AI agents. Instead of givi
 ## Hard Questions
 
 **"Is this just a hackathon project?"**
-"152 tests plus 53 Halmos symbolic proofs, TOCTOU fix, 7 caveat enforcers, hyperstructure design (no admin keys, no pause, no fees). The security posture says otherwise."
+"233 tests plus 74 Halmos symbolic proofs, TOCTOU fix, 7 caveat enforcers, hyperstructure design (no admin keys, no pause, no fees). The security posture says otherwise."
 
 **"Who's the team?"**
 "Solo founder. Previously secured $2B+ TVL across 67+ contract deployments with zero security incidents. Stanford Blockchain Review contributor."

@@ -124,4 +124,41 @@ contract ReputationGateEnforcerFV is Test {
         bytes memory terms = abi.encode(address(oracle), agentId, uint256(50));
         enforcer.beforeHook(terms, "", address(0), bytes32(0), address(0), address(0), address(0), 0, "");
     }
+
+    // =========================================================================
+    // Invariant: Exactly-at-threshold passes (>= not >)
+    // =========================================================================
+
+    /// @notice Proves: when score equals minScore exactly, the gate passes (>= not >).
+    function check_gate_exactlyAtThreshold(uint256 minScore) public view {
+        vm.assume(minScore <= 50); // default score is 50, so minScore must be <= 50 to pass
+        uint256 agentId = 1;
+        bytes memory terms = abi.encode(address(oracle), agentId, minScore);
+        // Must succeed — score is 50 and minScore <= 50
+        enforcer.beforeHook(terms, "", address(0), bytes32(0), address(0), address(0), address(0), 0, "");
+    }
+
+    /// @notice Proves: when score is exactly 1 below minScore, the gate blocks.
+    function check_gate_oneBelowThreshold() public {
+        uint256 agentId = 1;
+        // Score is 50. Set minScore to 51 — should block.
+        bytes memory terms = abi.encode(address(oracle), agentId, uint256(51));
+        try enforcer.beforeHook(terms, "", address(0), bytes32(0), address(0), address(0), address(0), 0, "") {
+            assert(false); // Must revert — 50 < 51
+        } catch {}
+    }
+
+    // =========================================================================
+    // Invariant: Reverting oracle is treated as blocked
+    // =========================================================================
+
+    /// @notice Proves: if the oracle reverts (e.g., not deployed), beforeHook reverts.
+    function check_gate_revertingOracleBlocks(uint256 agentId, uint256 minScore) public view {
+        // Use a non-contract address as oracle — staticcall will fail
+        address fakeOracle = address(0xDEAD);
+        bytes memory terms = abi.encode(fakeOracle, agentId, minScore);
+        try enforcer.beforeHook(terms, "", address(0), bytes32(0), address(0), address(0), address(0), 0, "") {
+            assert(false); // Must revert — oracle call fails
+        } catch {}
+    }
 }
