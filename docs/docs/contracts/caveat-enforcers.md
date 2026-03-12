@@ -58,9 +58,10 @@ bytes memory terms = abi.encode(uint256(100 ether), uint256(86400));
 
 - Tracks cumulative spend per delegation per period via `periodSpend[delegationHash][periodIndex]`
 - Period index is calculated as `block.timestamp / period`
+- Both hooks revert with `InvalidPeriod()` if the configured period is zero
 - `beforeHook` checks spend would not exceed allowance (view, no state change)
 - `afterHook` records the spend for the current period — **only callable by the authorized DelegationManager** (`msg.sender` check prevents external state manipulation)
-- Initialized with `delegationManager` address in constructor
+- Initialized with `delegationManager` address in constructor (immutable)
 
 ### Example
 
@@ -73,7 +74,9 @@ bytes memory terms = abi.encode(uint256(100 ether), uint256(86400));
 
 | Error | Condition |
 |-------|-----------|
-| `SpendingCapExceeded(uint256 requested, uint256 remaining)` | Transaction value exceeds remaining cap for the period |
+| `SpendingCapExceeded(uint256 requested, uint256 remaining)` | Cumulative spend (existing + new value) would exceed the period allowance. `requested` is the total attempted spend; `remaining` is what remains in the current period. |
+| `UnauthorizedCaller()` | `afterHook` called by an address other than the authorized DelegationManager |
+| `InvalidPeriod()` | Period is zero (would cause division by zero) |
 
 ---
 
@@ -153,8 +156,7 @@ bytes memory terms = abi.encode(block.timestamp, block.timestamp + 7 days);
 
 | Error | Condition |
 |-------|-----------|
-| `DelegationNotYetValid(uint256 current, uint256 validAfter)` | Current time is before the valid window |
-| `DelegationExpired(uint256 current, uint256 validBefore)` | Current time is after the valid window |
+| `OutsideTimeWindow(uint256 current, uint256 notBefore, uint256 notAfter)` | Current time is outside the valid window (before `notBefore` or after `notAfter`) |
 
 ---
 
@@ -179,7 +181,7 @@ bytes memory terms = abi.encode(uint256(10 ether));
 
 | Error | Condition |
 |-------|-----------|
-| `SingleTxCapExceeded(uint256 value, uint256 cap)` | Transaction value exceeds the per-tx cap |
+| `SingleTxCapExceeded(uint256 value, uint256 maxValue)` | Transaction value exceeds the per-tx cap |
 
 ---
 
@@ -200,13 +202,14 @@ bytes memory terms = abi.encode(uint256(1 hours), uint256(10 ether));
 - If the new transaction's value >= `valueThreshold`, checks that `cooldownPeriod` has elapsed
 - Transactions below the threshold are not subject to cooldown and bypass the check
 - `afterHook` records `lastExecution[delegationHash] = block.timestamp` if value meets threshold — **only callable by the authorized DelegationManager**
-- Initialized with `delegationManager` address in constructor
+- Initialized with `delegationManager` address in constructor (immutable)
 
 ### Error Cases
 
 | Error | Condition |
 |-------|-----------|
 | `CooldownNotElapsed(uint256 nextAllowed, uint256 current)` | Not enough time has passed since the last large transaction |
+| `UnauthorizedCaller()` | `afterHook` called by an address other than the authorized DelegationManager |
 
 ---
 

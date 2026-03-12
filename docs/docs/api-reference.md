@@ -39,6 +39,7 @@ event DelegationRevoked(bytes32 indexed delegationHash);
 
 error OnlyOwner();
 error OnlyOwnerOrDelegationManager();
+error OnlyEntryPoint();
 error ExecutionFailed();
 error InvalidSignatureLength();
 ```
@@ -50,7 +51,7 @@ error InvalidSignatureLength();
 /// @notice Deterministic deployment factory for IrisAccount instances via CREATE2
 
 function createAccount(address owner, address delegationManager, uint256 salt) external returns (address account);
-function getAddress(address owner, address delegationManager, uint256 salt) external view returns (address predicted);
+function getAddress(address owner, address delegationManager, uint256 salt) public view returns (address predicted);
 
 event AccountCreated(address indexed account, address indexed owner);
 ```
@@ -65,7 +66,7 @@ event AccountCreated(address indexed account, address indexed owner);
 
 function redeemDelegation(Delegation[] calldata delegations, Action calldata action) external;
 function revokeDelegation(Delegation calldata delegation) external;
-function getDelegationHash(Delegation calldata delegation) external view returns (bytes32);
+function getDelegationHash(Delegation calldata delegation) public view returns (bytes32);
 function domainSeparator() external view returns (bytes32);
 
 // ──── Storage ────
@@ -93,6 +94,10 @@ error ManagerNotAuthorized();
 ```solidity
 /// @title IrisApprovalQueue
 /// @notice Approval queue for agent transactions that exceed delegation limits
+
+// ──── Constructor ────
+
+constructor(uint256 _expiryDuration);
 
 struct ApprovalRequest {
     address agent;
@@ -173,13 +178,20 @@ function afterHook(
 //   - allowance: Maximum spend in wei per period
 //   - period: Period length in seconds (86400 = daily, 604800 = weekly)
 
+// ──── Constructor ────
+
+constructor(address _delegationManager);
+
 // ──── Storage ────
 
+address public immutable delegationManager;
 mapping(bytes32 => mapping(uint256 => uint256)) public periodSpend;
 
 // ──── Errors ────
 
 error SpendingCapExceeded(uint256 requested, uint256 remaining);
+error UnauthorizedCaller();
+error InvalidPeriod();
 ```
 
 ### ContractWhitelistEnforcer
@@ -212,8 +224,7 @@ error SelectorNotAllowed(bytes4 selector);
 
 // Terms encoding: abi.encode(uint256 notBefore, uint256 notAfter)
 
-error DelegationNotYetValid(uint256 current, uint256 validAfter);
-error DelegationExpired(uint256 current, uint256 validBefore);
+error OutsideTimeWindow(uint256 current, uint256 notBefore, uint256 notAfter);
 ```
 
 ### SingleTxCapEnforcer
@@ -224,7 +235,7 @@ error DelegationExpired(uint256 current, uint256 validBefore);
 
 // Terms encoding: abi.encode(uint256 maxValue)
 
-error SingleTxCapExceeded(uint256 value, uint256 cap);
+error SingleTxCapExceeded(uint256 value, uint256 maxValue);
 ```
 
 ### CooldownEnforcer
@@ -237,11 +248,19 @@ error SingleTxCapExceeded(uint256 value, uint256 cap);
 //   - cooldownPeriod: Minimum seconds between qualifying transactions
 //   - valueThreshold: Only transactions with value >= threshold trigger cooldown
 
+// ──── Constructor ────
+
+constructor(address _delegationManager);
+
 // ──── Storage ────
 
+address public immutable delegationManager;
 mapping(bytes32 => uint256) public lastExecution;
 
+// ──── Errors ────
+
 error CooldownNotElapsed(uint256 nextAllowed, uint256 current);
+error UnauthorizedCaller();
 ```
 
 ### ReputationGateEnforcer
@@ -302,6 +321,10 @@ error AgentAlreadyInactive(uint256 agentId);
 /// @title IrisReputationOracle
 /// @notice Tracks agent reputation scores (0-100). Ownable for bootstrapping.
 /// @dev Positive feedback: +2 (capped at 100). Negative feedback: -5 (floored at 0). Default score: 50.
+
+// ──── Constructor ────
+
+constructor(address _agentRegistry, address _owner);
 
 // ──── Functions ────
 
@@ -408,8 +431,8 @@ struct Delegation {
     address delegate;        // The agent receiving the delegation
     address authority;       // Parent delegation hash (address(0) for root)
     Caveat[] caveats;        // Array of caveat enforcers with terms
-    uint256 salt;            // Unique salt for delegation hash
-    bytes signature;         // EIP-712 signature from the delegator's owner
+    uint256 salt;            // Unique salt for replay protection
+    bytes signature;         // EIP-712 signature from the delegator (EOA) or delegator's owner (smart account)
 }
 
 /// @notice A caveat attached to a delegation

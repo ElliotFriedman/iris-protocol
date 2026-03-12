@@ -8,7 +8,7 @@ title: Iris Protocol
 
 > Privy, but trustless. Embedded agent wallets where every permission lives onchain.
 
-## What is Iris?
+## What is Iris Protocol?
 
 Iris Protocol gives AI agents their own smart contract wallets with configurable trust levels. Set the aperture: let your agent spend within daily caps on approved contracts, queue anything above for your approval, and revoke access instantly.
 

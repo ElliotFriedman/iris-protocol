@@ -110,7 +110,7 @@ delegationManager.redeemDelegation(chain, Action({
 
 ### Step 6: Agent Attempts Excess Spend -- Blocked
 
-The agent attempts a transaction that would exceed a caveat limit.
+The agent attempts a transaction that would exceed a caveat enforcer limit.
 
 ```solidity
 // Agent attempts too-large transaction
