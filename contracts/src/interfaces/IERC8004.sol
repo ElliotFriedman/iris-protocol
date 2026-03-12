@@ -12,12 +12,18 @@ interface IERC8004Identity {
     function registerAgent(address operator, string calldata metadataURI) external returns (uint256 agentId);
 
     /// @notice Returns the operator of a registered agent.
+    /// @param agentId The agent's identity token ID.
+    /// @return The operator address controlling the agent.
     function getOperator(uint256 agentId) external view returns (address);
 
     /// @notice Returns true if the agent ID is registered and active.
+    /// @param agentId The agent's identity token ID.
+    /// @return True if the agent is registered and active.
     function isRegistered(uint256 agentId) external view returns (bool);
 
     /// @notice Returns the metadata URI for a given agent.
+    /// @param agentId The agent's identity token ID.
+    /// @return The metadata URI string.
     function getMetadataURI(uint256 agentId) external view returns (string memory);
 }
 

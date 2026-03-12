@@ -30,13 +30,18 @@ struct Action {
 
 interface IERC7710Delegator {
     /// @notice Returns true if the delegation is currently valid.
+    /// @param delegationHash The hash of the delegation to check.
+    /// @return True if the delegation has not been revoked.
     function isDelegationValid(bytes32 delegationHash) external view returns (bool);
 
     /// @notice Revokes a delegation by its hash.
+    /// @param delegationHash The hash of the delegation to revoke.
     function revokeDelegation(bytes32 delegationHash) external;
 }
 
 interface IERC7710Delegate {
     /// @notice Redeems a delegation chain to execute an action.
+    /// @param delegations The delegation chain to redeem (leaf first, root last).
+    /// @param action The action to execute on the delegator's account.
     function redeemDelegation(Delegation[] calldata delegations, Action calldata action) external;
 }
