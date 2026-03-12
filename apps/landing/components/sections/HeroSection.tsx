@@ -29,11 +29,11 @@ export default function HeroSection() {
         </p>
 
         <p className="text-lg md:text-xl text-ash max-w-2xl mx-auto mb-4 font-sans">
-          Trustless payment infrastructure for AI agents.
+          Embedded agent wallets where every permission lives onchain.
         </p>
 
         <p className="text-lg md:text-xl text-ash max-w-2xl mx-auto mb-12 font-sans">
-          Every permission lives onchain. Every agent earns its trust.
+          Give your agent a wallet. Keep the keys.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center">

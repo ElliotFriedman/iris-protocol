@@ -44,19 +44,26 @@ export default function ReputationSection() {
             <div className="font-mono text-sm text-ash mb-4">{"// ReputationGateEnforcer.sol"}</div>
             <pre className="font-mono text-sm text-electric-cyan/80 overflow-x-auto">
 {`function beforeHook(
-    bytes calldata _terms,
+    bytes calldata terms,
     bytes calldata,
-    ModeCode,
-    bytes calldata,
+    address,
     bytes32,
-    address delegator,
-    address redeemer
-) external view {
-    uint256 minScore = abi.decode(_terms, (uint256));
-    uint256 reputation = IReputationRegistry(registry)
-        .getReputation(redeemer);
+    address,
+    address,
+    address,
+    uint256,
+    bytes calldata
+) external view override {
+    (address reputationOracle, uint256 agentId, uint256 minScore) =
+        abi.decode(terms, (address, uint256, uint256));
 
-    require(reputation >= minScore, "Reputation below threshold");
+    if (reputationOracle == address(0)) revert InvalidTerms();
+
+    uint256 currentScore = _queryReputation(reputationOracle, agentId);
+
+    if (currentScore < minScore) {
+        revert ReputationTooLow(agentId, currentScore, minScore);
+    }
 }`}
             </pre>
           </div>
